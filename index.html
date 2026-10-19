@@ -20,6 +20,7 @@
     --accent: #2e9e6a;
     --danger: #d64545;
     --warn: #d9822b;
+    --water: #3b8fd9;
     --line: #e3e8e5;
   }
   @media (prefers-color-scheme: dark) {
@@ -31,6 +32,7 @@
       --accent: #43c287;
       --danger: #ff6b6b;
       --warn: #f0a04b;
+      --water: #5aa9f0;
       --line: #2a332f;
     }
   }
@@ -165,6 +167,27 @@
 
   footer { color: var(--muted); font-size: 12px; text-align: center; padding: 12px 8px; }
 
+  /* Water, sweets, exercise */
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card-head h3 { margin: 0 0 10px; }
+  .fill.water { background: var(--water); }
+  .fill.over { background: var(--warn); }
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-row button {
+    flex: 1; border: 0; border-radius: 12px; background: var(--bg); color: var(--text);
+    padding: 12px 4px; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .btn-row button.primary { background: var(--water); color: #fff; }
+  .btn-row button:disabled { opacity: .4; }
+  .limit { padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .limit .track { margin: 4px 0 6px; height: 8px; }
+  .stats4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; }
+  .stats4 b { display: block; font-size: 17px; }
+  .stats4 span { font-size: 12px; color: var(--muted); }
+  .seg.metric button { font-size: 14px; padding: 10px 2px; }
+  .chart .bar-water { fill: var(--water); }
+  .chart .bar-water-dim { fill: var(--water); opacity: .4; }
+
   /* Tab bar */
   .tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
@@ -244,11 +267,17 @@
     <input id="fPortion" type="text" placeholder="e.g. 60 g">
     <label for="fCal">Calories (kcal)</label>
     <input id="fCal" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 230" required>
-    <label>Optional (grams)</label>
-    <div class="row3">
-      <input id="fProtein" type="text" inputmode="decimal" placeholder="Protein">
-      <input id="fCarbs" type="text" inputmode="decimal" placeholder="Carbs">
-      <input id="fFat" type="text" inputmode="decimal" placeholder="Fat">
+    <div id="sugarWrap" hidden>
+      <label for="fSugar">Sugar (grams, optional)</label>
+      <input id="fSugar" type="text" inputmode="decimal" placeholder="e.g. 18">
+    </div>
+    <div id="macroWrap">
+      <label>Optional (grams)</label>
+      <div class="row3">
+        <input id="fProtein" type="text" inputmode="decimal" placeholder="Protein">
+        <input id="fCarbs" type="text" inputmode="decimal" placeholder="Carbs">
+        <input id="fFat" type="text" inputmode="decimal" placeholder="Fat">
+      </div>
     </div>
     <div class="buttons">
       <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
@@ -276,6 +305,30 @@
   </form>
 </div>
 
+<!-- Add workout sheet -->
+<div class="overlay" id="xOverlay">
+  <form class="sheet" id="xForm" autocomplete="off">
+    <h2>Add workout</h2>
+    <div class="field">
+      <label for="xType">Activity</label>
+      <select id="xType"></select>
+    </div>
+    <div class="field">
+      <label for="xMin">Duration (minutes)</label>
+      <input id="xMin" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 30">
+    </div>
+    <div class="field">
+      <label for="xKcal">Calories burned (kcal)</label>
+      <input id="xKcal" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 250">
+      <div class="hint">Estimated from your weight and the activity. Replace it with your watch's number if you have one.</div>
+    </div>
+    <div class="buttons">
+      <button type="button" class="btn-cancel" id="xCancel">Cancel</button>
+      <button type="submit" class="btn-save" id="xSave" disabled>Save</button>
+    </div>
+  </form>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -286,12 +339,28 @@
     { id: "breakfast", label: "Breakfast", icon: "🌅" },
     { id: "lunch",     label: "Lunch",     icon: "☀️" },
     { id: "dinner",    label: "Dinner",    icon: "🌙" },
-    { id: "snacks",    label: "Snacks",    icon: "🥕" }
+    { id: "snacks",    label: "Snacks",    icon: "🥕" },
+    { id: "sweets",    label: "Sweets",    icon: "🍰" }
+  ];
+  // MET values (rough effort levels) used to estimate calories burned
+  var ACTIVITIES = [
+    { id: "walking",  label: "Walking",          icon: "🚶", met: 3.8 },
+    { id: "running",  label: "Running",          icon: "🏃", met: 9.8 },
+    { id: "cycling",  label: "Cycling",          icon: "🚴", met: 7.0 },
+    { id: "gym",      label: "Gym / strength",   icon: "🏋️", met: 4.5 },
+    { id: "swimming", label: "Swimming",         icon: "🏊", met: 6.0 },
+    { id: "yoga",     label: "Yoga / stretching", icon: "🧘", met: 2.5 },
+    { id: "hiit",     label: "HIIT / aerobics",  icon: "🤸", met: 8.0 },
+    { id: "hiking",   label: "Hiking",           icon: "🥾", met: 6.0 },
+    { id: "sport",    label: "Team sport",       icon: "⚽", met: 7.0 },
+    { id: "other",    label: "Other",            icon: "💪", met: 4.0 }
   ];
   var KEYS = {
     entries: "bitelog.entries.v1",
     profile: "bitelog.profile.v1",
-    weights: "bitelog.weights.v1"
+    weights: "bitelog.weights.v1",
+    water: "bitelog.water.v1",
+    workouts: "bitelog.workouts.v1"
   };
   var LB = 2.2046226218;
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -359,10 +428,15 @@
   // ======================================================
   var entries = load(KEYS.entries, []);
   var weights = load(KEYS.weights, []);
+  var water = load(KEYS.water, {});          // { "2026-10-19": 1500 } millilitres per day
+  var workouts = load(KEYS.workouts, []);    // [{ id, date, type, minutes, kcal }]
+  if (!water || typeof water !== "object" || Array.isArray(water)) water = {};
+  if (!Array.isArray(workouts)) workouts = [];
   function defaultProfile() {
     return {
       sex: null, age: null, heightCm: null, targetKg: null,
-      activity: 1.2, pace: 0.5, customGoal: null, units: "kg", lastBackup: null
+      activity: 1.2, pace: 0.5, customGoal: null, units: "kg", lastBackup: null,
+      glassMl: 250, waterMl: 2000, sweetsLimit: null, eatBack: 0.5
     };
   }
   var profile = Object.assign(defaultProfile(), load(KEYS.profile, {}));
@@ -524,6 +598,135 @@
     return wrap;
   }
 
+  function entryRow(entry) {
+    var row = el("div", "entry");
+    var info = el("div", "info");
+    info.appendChild(el("div", "name", entry.name));
+    var bits = [];
+    if (entry.portion) bits.push(entry.portion);
+    if (entry.sugar) bits.push((Math.round(entry.sugar * 10) / 10) + " g sugar");
+    if (bits.length) info.appendChild(el("div", "portion", bits.join(" · ")));
+    row.appendChild(info);
+    row.appendChild(el("div", "kcal", entry.calories + " kcal"));
+    var del = el("button", "del", "✕");
+    del.type = "button";
+    del.setAttribute("aria-label", "Delete " + entry.name);
+    del.addEventListener("click", function () {
+      if (confirm("Delete \"" + entry.name + "\"?")) removeEntry(entry.id);
+    });
+    row.appendChild(del);
+    return row;
+  }
+
+  function mealCard(meal, list, c) {
+    var sum = sumCal(list);
+    var isSweets = meal.id === "sweets";
+    var card = el("section", "meal");
+    var head = el("div", "meal-head");
+    head.appendChild(el("span", "", meal.icon + " " + meal.label));
+    var sugar = list.reduce(function (s, e) { return s + (e.sugar || 0); }, 0);
+    head.appendChild(el("small", "", sum + " kcal" + (isSweets && sugar > 0 ? " · " + Math.round(sugar) + " g sugar" : "")));
+    card.appendChild(head);
+
+    if (isSweets) {
+      var lim = sweetsLimit(c);
+      if (lim) {
+        var box = el("div", "limit");
+        var track = el("div", "track");
+        var fill = el("div", "fill" + (sum > lim ? " over" : ""));
+        fill.style.width = Math.min(sum / lim * 100, 100).toFixed(0) + "%";
+        track.appendChild(fill);
+        box.appendChild(track);
+        box.appendChild(document.createTextNode(sum > lim
+          ? "Limit " + fmt(lim) + " kcal: " + fmt(sum - lim) + " over"
+          : "Limit " + fmt(lim) + " kcal: " + fmt(lim - sum) + " left"));
+        card.appendChild(box);
+      }
+    }
+    if (list.length === 0) {
+      card.appendChild(el("div", "empty", isSweets ? "No sweets logged. They also count in your daily calories." : "Nothing logged yet"));
+    }
+    list.forEach(function (entry) { card.appendChild(entryRow(entry)); });
+
+    var add = el("button", "add", isSweets ? "＋ Add sweets" : "＋ Add food");
+    add.type = "button";
+    add.addEventListener("click", function () { openSheet(meal); });
+    card.appendChild(add);
+    return card;
+  }
+
+  function waterCard() {
+    var key = todayKey();
+    var ml = waterOn(key), target = profile.waterMl;
+    var card = el("div", "card");
+    var head = el("div", "card-head");
+    head.appendChild(el("h3", "", "💧 Water"));
+    head.appendChild(el("span", "muted", fmtL(ml) + " of " + fmtL(target)));
+    card.appendChild(head);
+
+    var track = el("div", "track");
+    var fill = el("div", "fill water");
+    fill.style.width = Math.min(ml / target * 100, 100).toFixed(0) + "%";
+    track.appendChild(fill);
+    card.appendChild(track);
+    card.appendChild(el("p", "small", glassesOf(ml) + " of " + glassesOf(target) + " glasses (" + profile.glassMl + " ml each)" +
+      (ml >= target ? " – goal reached!" : "")));
+
+    var row = el("div", "btn-row");
+    var minus = el("button", "", "− Glass");
+    minus.type = "button";
+    minus.disabled = ml <= 0;
+    minus.setAttribute("aria-label", "Remove one glass");
+    minus.addEventListener("click", function () { addWater(-profile.glassMl); });
+    var plus = el("button", "primary", "＋ Glass");
+    plus.type = "button";
+    plus.setAttribute("aria-label", "Add one glass");
+    plus.addEventListener("click", function () { addWater(profile.glassMl); });
+    var big = el("button", "", "＋ 500 ml");
+    big.type = "button";
+    big.addEventListener("click", function () { addWater(500); });
+    row.appendChild(minus); row.appendChild(plus); row.appendChild(big);
+    card.appendChild(row);
+    return card;
+  }
+
+  function exerciseCard() {
+    var list = workoutsOn(todayKey());
+    var mins = list.reduce(function (s, w) { return s + w.minutes; }, 0);
+    var kcal = list.reduce(function (s, w) { return s + w.kcal; }, 0);
+    var card = el("section", "meal");
+    var head = el("div", "meal-head");
+    head.appendChild(el("span", "", "🏃 Exercise"));
+    head.appendChild(el("small", "", list.length ? mins + " min · " + fmt(kcal) + " kcal burned" : "0 min"));
+    card.appendChild(head);
+    if (list.length === 0) card.appendChild(el("div", "empty", "No workouts yet today"));
+    list.forEach(function (w) {
+      var a = activityById(w.type);
+      var row = el("div", "entry");
+      var info = el("div", "info");
+      info.appendChild(el("div", "name", a.icon + " " + a.label));
+      info.appendChild(el("div", "portion", w.minutes + " min"));
+      row.appendChild(info);
+      row.appendChild(el("div", "kcal", fmt(w.kcal) + " kcal"));
+      var del = el("button", "del", "✕");
+      del.type = "button";
+      del.setAttribute("aria-label", "Delete workout");
+      del.addEventListener("click", function () {
+        if (!confirm("Delete this " + a.label.toLowerCase() + " workout?")) return;
+        workouts = workouts.filter(function (x) { return x.id !== w.id; });
+        save(KEYS.workouts, workouts);
+        renderAll();
+      });
+      row.appendChild(del);
+      card.appendChild(row);
+    });
+    var add = el("button", "add", "＋ Add workout");
+    add.type = "button";
+    add.addEventListener("click", openExerciseSheet);
+    card.appendChild(add);
+    return card;
+  }
+
   function renderToday() {
     var root = $("view-today");
     root.textContent = "";
@@ -531,6 +734,8 @@
     var todays = entries.filter(function (e) { return e.date === today; });
     var eaten = sumCal(todays);
     var c = calc();
+    var burned = burnedOn(today);
+    var bonus = bonusOn(today);
 
     var head = el("header");
     head.appendChild(el("h1", "", "Today"));
@@ -539,15 +744,26 @@
 
     var card = el("div", "card ring-card");
     if (c) {
-      card.appendChild(ringEl(eaten, c.goal));
-      var stats = el("div", "stats3");
-      [["Goal", fmt(c.goal)], ["Eaten", fmt(eaten)], [eaten > c.goal ? "Over" : "Left", fmt(Math.abs(c.goal - eaten))]].forEach(function (s) {
+      var budget = c.goal + bonus;
+      card.appendChild(ringEl(eaten, budget));
+      var stats = el("div", "stats4");
+      [["Goal", fmt(c.goal)],
+       ["Eaten", fmt(eaten)],
+       ["Exercise", bonus > 0 ? "+" + fmt(bonus) : "0"],
+       [eaten > budget ? "Over" : "Left", fmt(Math.abs(budget - eaten))]].forEach(function (s) {
         var d = el("div");
         d.appendChild(el("b", "", s[1]));
-        d.appendChild(el("span", "", s[0] + " (kcal)"));
+        d.appendChild(el("span", "", s[0]));
         stats.appendChild(d);
       });
       card.appendChild(stats);
+      var cap = "All numbers are kcal.";
+      if (burned > 0) {
+        cap = profile.eatBack === 0
+          ? "You burned about " + fmt(burned) + " kcal in workouts. It is not added to your budget (you can change this in Settings)."
+          : "You burned about " + fmt(burned) + " kcal in workouts. " + Math.round(profile.eatBack * 100) + "% of it is added to today's budget.";
+      }
+      card.appendChild(el("p", "muted small", cap));
     } else {
       card.appendChild(el("p", "muted", "Eaten today"));
       card.appendChild(el("strong", "", fmt(eaten) + " kcal"));
@@ -576,40 +792,14 @@
       root.appendChild(bcard);
     }
 
+    root.appendChild(waterCard());
+
     MEALS.forEach(function (meal) {
       var list = todays.filter(function (e) { return e.meal === meal.id; });
-      var sum = sumCal(list);
-
-      var mcard = el("section", "meal");
-      var mhead = el("div", "meal-head");
-      mhead.appendChild(el("span", "", meal.icon + " " + meal.label));
-      mhead.appendChild(el("small", "", sum + " kcal"));
-      mcard.appendChild(mhead);
-
-      if (list.length === 0) mcard.appendChild(el("div", "empty", "Nothing logged yet"));
-      list.forEach(function (entry) {
-        var row = el("div", "entry");
-        var info = el("div", "info");
-        info.appendChild(el("div", "name", entry.name));
-        if (entry.portion) info.appendChild(el("div", "portion", entry.portion));
-        row.appendChild(info);
-        row.appendChild(el("div", "kcal", entry.calories + " kcal"));
-        var del = el("button", "del", "✕");
-        del.type = "button";
-        del.setAttribute("aria-label", "Delete " + entry.name);
-        del.addEventListener("click", function () {
-          if (confirm("Delete \"" + entry.name + "\"?")) removeEntry(entry.id);
-        });
-        row.appendChild(del);
-        mcard.appendChild(row);
-      });
-
-      var add = el("button", "add", "＋ Add food");
-      add.type = "button";
-      add.addEventListener("click", function () { openSheet(meal); });
-      mcard.appendChild(add);
-      root.appendChild(mcard);
+      root.appendChild(mealCard(meal, list, c));
     });
+
+    root.appendChild(exerciseCard());
   }
 
   function removeEntry(id) {
@@ -678,6 +868,8 @@
   // ======================================================
   // WEEK
   // ======================================================
+  var weekMetric = "calories";
+
   function weekData(offset) {
     var now = new Date();
     var base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -689,17 +881,30 @@
       var d = addDays(monday, i);
       var k = keyOf(d);
       var list = entries.filter(function (e) { return e.date === k; });
-      days.push({ key: k, date: d, label: DAYS[i], kcal: sumCal(list), logged: list.length > 0, future: k > tk, today: k === tk });
+      var sw = list.filter(function (e) { return e.meal === "sweets"; });
+      var wk = workouts.filter(function (x) { return x.date === k; });
+      var exKcal = wk.reduce(function (s, x) { return s + x.kcal; }, 0);
+      days.push({
+        key: k, date: d, label: DAYS[i],
+        kcal: sumCal(list), logged: list.length > 0, future: k > tk, today: k === tk,
+        water: waterOn(k),
+        sweets: sumCal(sw),
+        sugar: sw.reduce(function (s, e) { return s + (e.sugar || 0); }, 0),
+        exMin: wk.reduce(function (s, x) { return s + x.minutes; }, 0),
+        exKcal: exKcal, exCount: wk.length,
+        bonus: Math.round(exKcal * profile.eatBack)
+      });
     }
     return { days: days, monday: monday, sunday: addDays(monday, 6) };
   }
 
-  function weekChart(days, goal) {
+  // Generic 7-bar chart. o = { line, minMax, fmtVal, cls(day, value), label }
+  function barChart(days, valueOf, o) {
     var W = 320, H = 180, padT = 20, padB = 24, padX = 8;
     var maxV = 0;
-    days.forEach(function (d) { if (d.kcal > maxV) maxV = d.kcal; });
-    if (goal && goal > maxV) maxV = goal;
-    if (maxV < 500) maxV = 1000;
+    days.forEach(function (d) { var v = valueOf(d); if (v > maxV) maxV = v; });
+    if (o.line && o.line > maxV) maxV = o.line;
+    if (maxV < o.minMax) maxV = o.minMax;
     maxV *= 1.12;
     var plotH = H - padT - padB;
     var bw = (W - 2 * padX) / 7;
@@ -707,30 +912,41 @@
 
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H }, "chart");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Calories eaten each day of the week");
+    svg.setAttribute("aria-label", o.label);
     svg.appendChild(svgEl("line", { x1: padX, x2: W - padX, y1: H - padB, y2: H - padB }, "grid"));
 
     days.forEach(function (d, i) {
+      var v = valueOf(d);
       var x = padX + i * bw + (bw - barW) / 2;
-      var h = d.kcal / maxV * plotH;
-      if (d.kcal > 0) {
-        var over = goal && d.kcal > goal;
-        svg.appendChild(svgEl("rect", { x: x.toFixed(1), y: (H - padB - h).toFixed(1), width: barW.toFixed(1), height: Math.max(h, 1).toFixed(1), rx: 4 }, over ? "bar-over" : "bar"));
-        var v = svgEl("text", { x: (x + barW / 2).toFixed(1), y: (H - padB - h - 4).toFixed(1), "text-anchor": "middle" }, "val");
-        v.textContent = fmt(d.kcal);
-        svg.appendChild(v);
+      var h = v / maxV * plotH;
+      if (v > 0) {
+        svg.appendChild(svgEl("rect", { x: x.toFixed(1), y: (H - padB - h).toFixed(1), width: barW.toFixed(1), height: Math.max(h, 1).toFixed(1), rx: 4 }, o.cls(d, v)));
+        var t = svgEl("text", { x: (x + barW / 2).toFixed(1), y: (H - padB - h - 4).toFixed(1), "text-anchor": "middle" }, "val");
+        t.textContent = o.fmtVal(v);
+        svg.appendChild(t);
       }
       var lab = svgEl("text", { x: (padX + i * bw + bw / 2).toFixed(1), y: H - 8, "text-anchor": "middle" }, d.today ? "today-label" : "");
       lab.textContent = d.label;
       svg.appendChild(lab);
     });
 
-    if (goal) {
-      var gy = H - padB - goal / maxV * plotH;
+    if (o.line) {
+      var gy = H - padB - o.line / maxV * plotH;
       svg.appendChild(svgEl("line", { x1: padX, x2: W - padX, y1: gy.toFixed(1), y2: gy.toFixed(1) }, "goal"));
     }
     return svg;
   }
+
+  function kvRows(card, rows) {
+    rows.forEach(function (r) {
+      var kv = el("div", "kv");
+      kv.appendChild(el("span", "", r[0]));
+      kv.appendChild(el("span", "", r[1]));
+      card.appendChild(kv);
+    });
+  }
+
+  function sumOf(list, fn) { return list.reduce(function (s, x) { return s + fn(x); }, 0); }
 
   function renderWeek() {
     var root = $("view-week");
@@ -738,6 +954,7 @@
     var c = calc();
     var wd = weekData(weekOffset);
     var days = wd.days;
+    var elapsed = days.filter(function (d) { return !d.future; }).length;
 
     var head = el("header");
     head.appendChild(el("h1", "", "Week"));
@@ -760,66 +977,170 @@
     nav.appendChild(prev); nav.appendChild(mid); nav.appendChild(next);
     root.appendChild(nav);
 
-    // Chart
+    // Metric switch
+    var mseg = el("div", "seg metric");
+    mseg.style.margin = "8px 0";
+    [["calories", "Calories"], ["water", "Water"], ["sweets", "Sweets"], ["exercise", "Exercise"]].forEach(function (m) {
+      var b = el("button", weekMetric === m[0] ? "on" : "", m[1]);
+      b.type = "button";
+      b.addEventListener("click", function () { weekMetric = m[0]; renderWeek(); });
+      mseg.appendChild(b);
+    });
+    root.appendChild(mseg);
+
     var chartCard = el("div", "card");
-    chartCard.appendChild(el("h3", "", "Calories per day"));
-    chartCard.appendChild(weekChart(days, c ? c.goal : null));
-    if (c) {
-      chartCard.appendChild(el("p", "muted small", "Dashed line = your daily goal (" + fmt(c.goal) + " kcal). Green bars are within your goal, orange bars are over it."));
-    } else {
-      chartCard.appendChild(el("p", "muted small", "Set up your profile in Settings to see your daily goal as a line."));
-    }
-    root.appendChild(chartCard);
-
-    // Summary
-    var logged = days.filter(function (d) { return d.logged; });
-    var elapsed = days.filter(function (d) { return !d.future; }).length;
     var sum = el("div", "card");
-    sum.appendChild(el("h3", "", "Week summary"));
-    if (logged.length === 0) {
-      sum.appendChild(el("p", "muted", weekOffset === 0 ? "No food logged this week yet. Add your first meal on the Today tab." : "No food was logged in this week."));
+
+    if (weekMetric === "water") {
+      // ---------------- WATER ----------------
+      var wTarget = profile.waterMl;
+      chartCard.appendChild(el("h3", "", "Water per day (litres)"));
+      chartCard.appendChild(barChart(days, function (d) { return d.water; }, {
+        line: wTarget, minMax: wTarget,
+        fmtVal: function (v) { return (v / 1000).toFixed(1); },
+        cls: function (d, v) { return v >= wTarget ? "bar-water" : "bar-water-dim"; },
+        label: "Water drunk each day of the week"
+      }));
+      chartCard.appendChild(el("p", "muted small", "Dashed line = your target (" + fmtL(wTarget) + "). Bars are faded until you reach it."));
+
+      sum.appendChild(el("h3", "", "Water this week"));
+      var wl = days.filter(function (d) { return d.water > 0; });
+      if (wl.length === 0) {
+        sum.appendChild(el("p", "muted", weekOffset === 0 ? "No water logged this week yet." : "No water was logged in this week."));
+      } else {
+        var wTotal = sumOf(wl, function (d) { return d.water; });
+        var wAvg = Math.round(wTotal / wl.length);
+        var wHit = wl.filter(function (d) { return d.water >= wTarget; }).length;
+        sum.appendChild(el("p", "", wAvg >= wTarget
+          ? "Great: you average " + fmtL(wAvg) + " a day, at or above your target."
+          : "You average " + fmtL(wAvg) + " a day. Your target is " + fmtL(wTarget) + "."));
+        kvRows(sum, [
+          ["Days logged", wl.length + " of " + elapsed],
+          ["Average per logged day", fmtL(wAvg) + " (" + glassesOf(wAvg) + " glasses)"],
+          ["Target reached", wHit + " of " + wl.length + " logged days"],
+          ["Total", fmtL(wTotal)]
+        ]);
+      }
+    } else if (weekMetric === "sweets") {
+      // ---------------- SWEETS ----------------
+      var sLimit = sweetsLimit(c);
+      chartCard.appendChild(el("h3", "", "Sweets per day (kcal)"));
+      chartCard.appendChild(barChart(days, function (d) { return d.sweets; }, {
+        line: sLimit, minMax: sLimit || 100, fmtVal: fmt,
+        cls: function (d, v) { return sLimit && v > sLimit ? "bar-over" : "bar"; },
+        label: "Calories from sweets each day of the week"
+      }));
+      chartCard.appendChild(el("p", "muted small", sLimit
+        ? "Dashed line = your sweets limit (" + fmt(sLimit) + " kcal). Bars turn orange when you go over it."
+        : "Set up your calorie goal in Settings to get a default sweets limit."));
+
+      sum.appendChild(el("h3", "", "Sweets this week"));
+      var fl = days.filter(function (d) { return d.logged; });
+      if (fl.length === 0) {
+        sum.appendChild(el("p", "muted", "No food logged this week yet."));
+      } else {
+        var sTot = sumOf(fl, function (d) { return d.sweets; });
+        var kTot = sumOf(fl, function (d) { return d.kcal; });
+        var sugTot = sumOf(fl, function (d) { return d.sugar; });
+        var sAvg = sTot / fl.length;
+        if (sTot === 0) sum.appendChild(el("p", "", "No sweets logged on your logged days."));
+        else if (sLimit) sum.appendChild(el("p", "", sAvg <= sLimit
+          ? "On average your sweets stay within your limit of " + fmt(sLimit) + " kcal a day."
+          : "On average your sweets are above your limit of " + fmt(sLimit) + " kcal a day."));
+        var sRows = [
+          ["Sweets total", fmt(sTot) + " kcal"],
+          ["Average per logged day", fmt(sAvg) + " kcal"],
+          ["Share of your calories", (kTot > 0 ? Math.round(sTot / kTot * 100) : 0) + "%"]
+        ];
+        if (sugTot > 0) sRows.push(["Sugar logged", Math.round(sugTot) + " g"]);
+        if (sLimit) sRows.push(["Days over your limit", fl.filter(function (d) { return d.sweets > sLimit; }).length + " of " + fl.length]);
+        kvRows(sum, sRows);
+        sum.appendChild(el("p", "muted small", "Sweets are also counted in your daily calories. Health guidance (WHO) suggests keeping free sugars below about 10% of daily calories, and BiteLog's default sweets limit follows that idea."));
+      }
+    } else if (weekMetric === "exercise") {
+      // ---------------- EXERCISE ----------------
+      chartCard.appendChild(el("h3", "", "Exercise per day (minutes)"));
+      chartCard.appendChild(barChart(days, function (d) { return d.exMin; }, {
+        line: null, minMax: 60, fmtVal: function (v) { return String(v); },
+        cls: function () { return "bar"; },
+        label: "Minutes of exercise each day of the week"
+      }));
+      chartCard.appendChild(el("p", "muted small", "Minutes of exercise per day."));
+
+      sum.appendChild(el("h3", "", "Exercise this week"));
+      var exCount = sumOf(days, function (d) { return d.exCount; });
+      if (exCount === 0) {
+        sum.appendChild(el("p", "muted", weekOffset === 0 ? "No workouts logged this week yet. Add one from the Today tab." : "No workouts were logged in this week."));
+      } else {
+        var exMin = sumOf(days, function (d) { return d.exMin; });
+        var exKcal = sumOf(days, function (d) { return d.exKcal; });
+        var exBonus = sumOf(days, function (d) { return d.bonus; });
+        var active = days.filter(function (d) { return d.exMin > 0; }).length;
+        var timeTxt = exMin >= 60 ? Math.floor(exMin / 60) + " h " + (exMin % 60) + " min" : exMin + " min";
+        sum.appendChild(el("p", "", "You did " + exMin + " of the 150 minutes the weekly guide suggests."));
+        kvRows(sum, [
+          ["Workouts", String(exCount)],
+          ["Active days", active + " of " + elapsed],
+          ["Total time", timeTxt],
+          ["Calories burned (estimate)", fmt(exKcal) + " kcal"],
+          ["Added to your budgets", fmt(exBonus) + " kcal"]
+        ]);
+        sum.appendChild(el("p", "muted small", "Health guidance (WHO) suggests at least 150 minutes of moderate activity a week for adults. Calories burned are rough estimates."));
+      }
     } else {
-      var total = logged.reduce(function (s, d) { return s + d.kcal; }, 0);
-      var avg = total / logged.length;
-      if (c) {
-        var diff = avg - c.goal;
-        sum.appendChild(el("p", "", diff <= 0
-          ? "Nice work: you are averaging " + fmt(-diff) + " kcal under your goal."
-          : "You are averaging " + fmt(diff) + " kcal over your goal."));
+      // ---------------- CALORIES ----------------
+      chartCard.appendChild(el("h3", "", "Calories per day"));
+      chartCard.appendChild(barChart(days, function (d) { return d.kcal; }, {
+        line: c ? c.goal : null, minMax: 1000, fmtVal: fmt,
+        cls: function (d, v) { return c && v > c.goal + d.bonus ? "bar-over" : "bar"; },
+        label: "Calories eaten each day of the week"
+      }));
+      chartCard.appendChild(el("p", "muted small", c
+        ? "Dashed line = your daily goal (" + fmt(c.goal) + " kcal). Bars turn orange when you go over that day's budget (goal plus any exercise bonus)."
+        : "Set up your profile in Settings to see your daily goal as a line."));
+
+      var logged = days.filter(function (d) { return d.logged; });
+      sum.appendChild(el("h3", "", "Week summary"));
+      if (logged.length === 0) {
+        sum.appendChild(el("p", "muted", weekOffset === 0 ? "No food logged this week yet. Add your first meal on the Today tab." : "No food was logged in this week."));
+      } else {
+        var total = sumOf(logged, function (d) { return d.kcal; });
+        var avg = total / logged.length;
+        var rows = [["Days logged", logged.length + " of " + elapsed], ["Average per logged day", fmt(avg) + " kcal"]];
+        if (c) {
+          var budgetSum = sumOf(logged, function (d) { return c.goal + d.bonus; });
+          var diff = avg - budgetSum / logged.length;
+          sum.appendChild(el("p", "", diff <= 0
+            ? "Nice work: you are averaging " + fmt(-diff) + " kcal under your budget."
+            : "You are averaging " + fmt(diff) + " kcal over your budget."));
+          rows.push(["Eaten vs budget (logged days)", fmt(total) + " / " + fmt(budgetSum) + " kcal"]);
+          var estKg = sumOf(logged, function (d) { return c.tdee + d.bonus - d.kcal; }) / 7700;
+          rows.push(["Estimated change from calories", signed(-toDisp(estKg), 1) + " " + unitLabel()]);
+        }
+        kvRows(sum, rows);
+        sum.appendChild(el("p", "muted small", "Days with nothing logged are not counted. The calorie estimate is rough: real weight also moves with water, salt and the time you weigh yourself."));
       }
-      var rows = [["Days logged", logged.length + " of " + elapsed], ["Average per logged day", fmt(avg) + " kcal"]];
-      if (c) {
-        rows.push(["Eaten vs goal (logged days)", fmt(total) + " / " + fmt(c.goal * logged.length) + " kcal"]);
-        var estKg = logged.reduce(function (s, d) { return s + (c.tdee - d.kcal); }, 0) / 7700;
-        rows.push(["Estimated change from calories", signed(-toDisp(estKg), 1) + " " + unitLabel()]);
+
+      // Actual weigh-ins in this week
+      var startKey = keyOf(wd.monday), endKey = keyOf(wd.sunday);
+      var inWeek = weights.filter(function (w) { return w.date >= startKey && w.date <= endKey; });
+      var before = null;
+      weights.forEach(function (w) { if (w.date < startKey) before = w; });
+      var wkv = el("div", "kv");
+      wkv.appendChild(el("span", "", "Weight change (weigh-ins)"));
+      if (inWeek.length === 0) {
+        wkv.appendChild(el("span", "", "No weigh-in"));
+      } else {
+        var endW = inWeek[inWeek.length - 1];
+        var startW = before || inWeek[0];
+        if (startW.id === endW.id) wkv.appendChild(el("span", "", "Log one more"));
+        else wkv.appendChild(el("span", "", signed(toDisp(endW.kg - startW.kg), 1) + " " + unitLabel()));
       }
-      rows.forEach(function (r) {
-        var kv = el("div", "kv");
-        kv.appendChild(el("span", "", r[0]));
-        kv.appendChild(el("span", "", r[1]));
-        sum.appendChild(kv);
-      });
-      sum.appendChild(el("p", "muted small", "Days with nothing logged are not counted. The calorie estimate is rough: real weight also moves with water, salt and the time you weigh yourself."));
+      sum.appendChild(wkv);
     }
 
-    // Actual weigh-ins in this week
-    var startKey = keyOf(wd.monday), endKey = keyOf(wd.sunday);
-    var inWeek = weights.filter(function (w) { return w.date >= startKey && w.date <= endKey; });
-    var before = null;
-    weights.forEach(function (w) { if (w.date < startKey) before = w; });
-    var wkv = el("div", "kv");
-    wkv.appendChild(el("span", "", "Weight change (weigh-ins)"));
-    if (inWeek.length === 0) {
-      wkv.appendChild(el("span", "", "No weigh-in"));
-    } else {
-      var endW = inWeek[inWeek.length - 1];
-      var startW = before || inWeek[0];
-      if (startW.id === endW.id) wkv.appendChild(el("span", "", "Log one more"));
-      else wkv.appendChild(el("span", "", signed(toDisp(endW.kg - startW.kg), 1) + " " + unitLabel()));
-    }
-    sum.appendChild(wkv);
+    root.appendChild(chartCard);
     root.appendChild(sum);
-
     root.appendChild(progressCard(c));
   }
 
@@ -1110,6 +1431,45 @@
     });
     root.appendChild(form);
 
+    // Daily targets: water, sweets, exercise
+    var tForm = el("form", "card");
+    tForm.autocomplete = "off";
+    tForm.appendChild(el("h3", "", "Daily targets"));
+    var sGlass = select("sGlass", [[200, "Small glass: 200 ml"], [250, "Standard glass: 250 ml"], [300, "Large glass: 300 ml"], [330, "Big glass or can: 330 ml"], [500, "Bottle: 500 ml"]], profile.glassMl);
+    var sWater = input("sWater", "text", "decimal", String(profile.waterMl / 1000), "e.g. 2");
+    var lw2 = latestWeight();
+    var suggest = lw2 ? Math.min(3.5, Math.max(1.5, Math.round(lw2.kg * 33 / 250) / 4)) : null;
+    var cc = calc();
+    var sSweets = input("sSweets", "text", "numeric", profile.sweetsLimit, "Leave empty for 10% of your goal");
+    var sEat = select("sEat", [[0, "Off: exercise is only a log"], [0.5, "Half of it (recommended)"], [1, "All of it"]], profile.eatBack);
+    tForm.appendChild(field("Glass size", sGlass));
+    tForm.appendChild(field("Daily water target (litres)", sWater,
+      "Water is shown in litres. " + (suggest ? "A common guide is about 33 ml per kg of body weight, roughly " + suggest + " L for you. " : "") +
+      "Needs vary with heat, exercise and health."));
+    tForm.appendChild(field("Daily sweets limit (kcal, optional)", sSweets,
+      cc ? "Leave empty to use 10% of your daily goal, about " + fmt(round10(cc.goal * 0.1)) + " kcal." : "Leave empty to use 10% of your daily calorie goal."));
+    tForm.appendChild(field("Add exercise calories to my daily budget", sEat,
+      "Your activity level above may already include regular exercise, and workout calorie estimates are rough, so half is a safe middle."));
+    var tSave = el("button", "btn", "Save targets");
+    tSave.type = "submit";
+    tForm.appendChild(tSave);
+    tForm.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var liters = num(sWater.value);
+      var sw = sSweets.value.trim() === "" ? null : parseInt(sSweets.value, 10);
+      if (!(liters >= 0.5 && liters <= 6)) { toast("Please enter a water target between 0.5 and 6 litres.", true); return; }
+      if (sw !== null && !(sw >= 20 && sw <= 2000)) { toast("The sweets limit should be between 20 and 2,000 kcal, or leave it empty.", true); return; }
+      profile.glassMl = parseInt(sGlass.value, 10);
+      profile.waterMl = Math.round(liters * 1000);
+      profile.sweetsLimit = sw;
+      profile.eatBack = parseFloat(sEat.value);
+      saveProfile();
+      toast("Targets saved");
+      renderSettings();
+      renderAll();
+    });
+    root.appendChild(tForm);
+
     // Numbers
     var c = calc();
     if (c) {
@@ -1149,6 +1509,8 @@
     [["Last backup", lastTxt, "lastBackupVal"],
      ["Food entries", fmt(st.entries)],
      ["Weight entries", fmt(st.weights)],
+     ["Workouts", fmt(st.workouts)],
+     ["Water days", fmt(st.waterDays)],
      ["Space used", st.kb < 10 ? st.kb.toFixed(1) + " KB" : fmt(st.kb) + " KB"]].forEach(function (r) {
       var kv = el("div", "kv");
       kv.appendChild(el("span", "", r[0]));
@@ -1180,8 +1542,8 @@
     fCard.appendChild(el("h3", "", "Clear saved data"));
     fCard.appendChild(el("p", "muted small", "Deleting cannot be undone, so save a backup first. Your weights, profile and calorie goal are kept unless you delete everything."));
     var sOld = select("sOld", [[30, "30 days"], [90, "3 months"], [180, "6 months"], [365, "1 year"]], 90);
-    fCard.appendChild(field("Delete food entries older than", sOld));
-    var delOld = el("button", "btn secondary", "Delete older food entries");
+    fCard.appendChild(field("Delete logs older than", sOld, "Food, water and exercise logs."));
+    var delOld = el("button", "btn secondary", "Delete older logs");
     delOld.type = "button";
     delOld.addEventListener("click", function () { deleteOlder(parseInt(sOld.value, 10)); });
     fCard.appendChild(delOld);
@@ -1198,8 +1560,10 @@
         localStorage.removeItem(KEYS.entries);
         localStorage.removeItem(KEYS.profile);
         localStorage.removeItem(KEYS.weights);
+        localStorage.removeItem(KEYS.water);
+        localStorage.removeItem(KEYS.workouts);
       } catch (e) {}
-      entries = []; weights = [];
+      entries = []; weights = []; water = {}; workouts = [];
       profile = defaultProfile();
       weekOffset = 0;
       toast("All data deleted");
@@ -1210,17 +1574,106 @@
   }
 
   // ======================================================
+  // Water, sweets and exercise
+  // ======================================================
+  function waterOn(key) { return water[key] || 0; }
+  function fmtL(ml) { return (ml / 1000).toFixed(ml % 100 === 0 ? 1 : 2) + " L"; }
+  function glassesOf(ml) { return String(Math.round(ml / profile.glassMl * 10) / 10); }
+
+  function addWater(ml) {
+    var k = todayKey();
+    var before = waterOn(k);
+    var after = Math.min(20000, Math.max(0, before + ml));
+    if (after === 0) delete water[k]; else water[k] = after;
+    save(KEYS.water, water);
+    renderAll();
+    if (ml > 0 && before < profile.waterMl && after >= profile.waterMl) toast("Water goal reached 💧");
+  }
+
+  function sweetsLimit(c) {
+    if (profile.sweetsLimit) return profile.sweetsLimit;
+    return c ? round10(c.goal * 0.10) : null;
+  }
+
+  function activityById(id) {
+    for (var i = 0; i < ACTIVITIES.length; i++) if (ACTIVITIES[i].id === id) return ACTIVITIES[i];
+    return ACTIVITIES[ACTIVITIES.length - 1];
+  }
+  // Extra calories burned above resting: (MET - 1) x weight(kg) x hours
+  function estimateBurn(typeId, minutes) {
+    var lw = latestWeight();
+    var kg = lw ? lw.kg : 70;
+    return Math.max(0, Math.round((activityById(typeId).met - 1) * kg * minutes / 60));
+  }
+  function workoutsOn(key) { return workouts.filter(function (w) { return w.date === key; }); }
+  function burnedOn(key) { return workoutsOn(key).reduce(function (s, w) { return s + w.kcal; }, 0); }
+  function bonusOn(key) { return Math.round(burnedOn(key) * profile.eatBack); }
+
+  var xOverlay = $("xOverlay");
+  var xType = $("xType"), xMin = $("xMin"), xKcal = $("xKcal"), xSave = $("xSave");
+  var xTouched = false;
+  ACTIVITIES.forEach(function (a) {
+    var o = document.createElement("option");
+    o.value = a.id;
+    o.textContent = a.icon + " " + a.label;
+    xType.appendChild(o);
+  });
+  function xValid() {
+    var m = /^\d+$/.test(xMin.value.trim()) ? parseInt(xMin.value, 10) : NaN;
+    var k = /^\d+$/.test(xKcal.value.trim()) ? parseInt(xKcal.value, 10) : NaN;
+    return m >= 1 && m <= 600 && k >= 0 && k <= 5000;
+  }
+  function xRefresh() { xSave.disabled = !xValid(); }
+  function xUpdateEstimate() {
+    if (xTouched) { xRefresh(); return; }
+    var m = /^\d+$/.test(xMin.value.trim()) ? parseInt(xMin.value, 10) : NaN;
+    xKcal.value = m >= 1 ? String(estimateBurn(xType.value, m)) : "";
+    xRefresh();
+  }
+  xType.addEventListener("change", xUpdateEstimate);
+  xMin.addEventListener("input", xUpdateEstimate);
+  xKcal.addEventListener("input", function () { xTouched = true; xRefresh(); });
+
+  function openExerciseSheet() {
+    $("xForm").reset();
+    xTouched = false;
+    xRefresh();
+    xOverlay.classList.add("open");
+    setTimeout(function () { xMin.focus(); }, 50);
+  }
+  function closeExerciseSheet() { xOverlay.classList.remove("open"); }
+  $("xCancel").addEventListener("click", closeExerciseSheet);
+  xOverlay.addEventListener("click", function (e) { if (e.target === xOverlay) closeExerciseSheet(); });
+  $("xForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (xSave.disabled) return;
+    workouts.push({
+      id: newId(), date: todayKey(), type: xType.value,
+      minutes: parseInt(xMin.value, 10), kcal: parseInt(xKcal.value, 10)
+    });
+    save(KEYS.workouts, workouts);
+    closeExerciseSheet();
+    toast("Workout saved");
+    renderAll();
+  });
+
+  // ======================================================
   // Backup, restore and clearing data
   // ======================================================
   function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
   function dataStats() {
-    var bytes = JSON.stringify(entries).length + JSON.stringify(weights).length + JSON.stringify(profile).length;
-    return { entries: entries.length, weights: weights.length, kb: bytes / 1024 };
+    var bytes = JSON.stringify(entries).length + JSON.stringify(weights).length + JSON.stringify(profile).length +
+      JSON.stringify(workouts).length + JSON.stringify(water).length;
+    return {
+      entries: entries.length, weights: weights.length,
+      workouts: workouts.length, waterDays: Object.keys(water).length,
+      kb: bytes / 1024
+    };
   }
 
   function needsBackup() {
-    if (entries.length + weights.length < 5) return false;
+    if (entries.length + weights.length + workouts.length < 5) return false;
     if (!profile.lastBackup) return true;
     var t = Date.parse(profile.lastBackup);
     if (isNaN(t)) return true;
@@ -1229,8 +1682,8 @@
 
   function buildBackup() {
     return {
-      app: "bitelog", version: 1, exportedAt: new Date().toISOString(),
-      profile: profile, entries: entries, weights: weights
+      app: "bitelog", version: 2, exportedAt: new Date().toISOString(),
+      profile: profile, entries: entries, weights: weights, workouts: workouts, water: water
     };
   }
 
@@ -1301,7 +1754,8 @@
         name: e.name.slice(0, 200),
         portion: typeof e.portion === "string" ? e.portion.slice(0, 100) : "",
         calories: Math.round(e.calories),
-        protein: optNum(e.protein), carbs: optNum(e.carbs), fat: optNum(e.fat)
+        protein: optNum(e.protein), carbs: optNum(e.carbs), fat: optNum(e.fat),
+        sugar: optNum(e.sugar)
       };
     });
 
@@ -1315,6 +1769,28 @@
       return true;
     }).map(function (w) { return { id: uniqueId(w.id, seenW), date: w.date, kg: w.kg }; });
 
+    var actIds = ACTIVITIES.map(function (a) { return a.id; });
+    var seenX = {};
+    var xs = (Array.isArray(obj.workouts) ? obj.workouts : []).filter(function (x) {
+      return x && typeof x.date === "string" && okDate.test(x.date) &&
+        typeof x.minutes === "number" && isFinite(x.minutes) && x.minutes >= 1 && x.minutes <= 600 &&
+        typeof x.kcal === "number" && isFinite(x.kcal) && x.kcal >= 0 && x.kcal <= 5000;
+    }).map(function (x) {
+      return {
+        id: uniqueId(x.id, seenX), date: x.date,
+        type: actIds.indexOf(x.type) !== -1 ? x.type : "other",
+        minutes: Math.round(x.minutes), kcal: Math.round(x.kcal)
+      };
+    });
+
+    var wat = {};
+    if (obj.water && typeof obj.water === "object" && !Array.isArray(obj.water)) {
+      Object.keys(obj.water).forEach(function (k) {
+        var v = obj.water[k];
+        if (okDate.test(k) && typeof v === "number" && isFinite(v) && v > 0 && v <= 20000) wat[k] = Math.round(v);
+      });
+    }
+
     var p = (obj.profile && typeof obj.profile === "object") ? obj.profile : {};
     var prof = {
       sex: (p.sex === "f" || p.sex === "m") ? p.sex : null,
@@ -1325,9 +1801,13 @@
       pace: [0.25, 0.5, 0.75].indexOf(p.pace) !== -1 ? p.pace : 0.5,
       customGoal: inRange(p.customGoal, 500, 6000),
       units: p.units === "lb" ? "lb" : "kg",
+      glassMl: [200, 250, 300, 330, 500].indexOf(p.glassMl) !== -1 ? p.glassMl : 250,
+      waterMl: inRange(p.waterMl, 500, 6000) || 2000,
+      sweetsLimit: inRange(p.sweetsLimit, 20, 2000),
+      eatBack: [0, 0.5, 1].indexOf(p.eatBack) !== -1 ? p.eatBack : 0.5,
       lastBackup: (typeof obj.exportedAt === "string" && !isNaN(Date.parse(obj.exportedAt))) ? new Date(obj.exportedAt).toISOString() : null
     };
-    return { entries: es, weights: ws, profile: prof };
+    return { entries: es, weights: ws, workouts: xs, water: wat, profile: prof };
   }
 
   function importBackup(inputEl) {
@@ -1343,15 +1823,20 @@
       var c = cleanBackup(obj);
       if (!c) { toast("That does not look like a BiteLog backup file.", true); return; }
       var msg = "Restore this backup?\n\n" + c.entries.length + " food entries and " + c.weights.length + " weights" +
+        (c.workouts.length ? ", " + c.workouts.length + " workouts" : "") +
         (c.profile.lastBackup ? ", saved on " + longDate(new Date(c.profile.lastBackup)) : "") +
         ".\n\nThis REPLACES everything currently on this phone.";
       if (!confirm(msg)) return;
       entries = c.entries;
       weights = c.weights;
+      workouts = c.workouts;
+      water = c.water;
       sortWeights();
       profile = Object.assign(defaultProfile(), c.profile);
       save(KEYS.entries, entries);
       save(KEYS.weights, weights);
+      save(KEYS.workouts, workouts);
+      save(KEYS.water, water);
       saveProfile();
       weekOffset = 0;
       toast("Backup restored");
@@ -1362,13 +1847,22 @@
 
   function deleteOlder(days) {
     var cutoff = keyOf(addDays(new Date(), -days));
-    var old = entries.filter(function (e) { return e.date < cutoff; });
-    if (old.length === 0) { toast("No food entries older than that."); return; }
-    if (!confirm("Delete " + fmt(old.length) + " food entries from before " + longDate(parseKey(cutoff)) +
+    var oldE = entries.filter(function (e) { return e.date < cutoff; });
+    var oldX = workouts.filter(function (x) { return x.date < cutoff; });
+    var oldW = Object.keys(water).filter(function (k) { return k < cutoff; });
+    if (oldE.length + oldX.length + oldW.length === 0) { toast("Nothing older than that to delete."); return; }
+    var parts = [fmt(oldE.length) + " food entries"];
+    if (oldX.length) parts.push(fmt(oldX.length) + " workouts");
+    if (oldW.length) parts.push(fmt(oldW.length) + " days of water logs");
+    if (!confirm("Delete " + parts.join(", ") + " from before " + longDate(parseKey(cutoff)) +
       "?\n\nYour weights and profile are kept. Tip: save a backup first. This cannot be undone.")) return;
     entries = entries.filter(function (e) { return e.date >= cutoff; });
+    workouts = workouts.filter(function (x) { return x.date >= cutoff; });
+    oldW.forEach(function (k) { delete water[k]; });
     save(KEYS.entries, entries);
-    toast("Deleted " + fmt(old.length) + " entries");
+    save(KEYS.workouts, workouts);
+    save(KEYS.water, water);
+    toast("Old logs deleted");
     renderSettings();
     renderAll();
   }
@@ -1404,6 +1898,8 @@
     currentMeal = meal;
     $("sheetTitle").textContent = "Add to " + meal.label;
     form.reset();
+    $("sugarWrap").hidden = meal.id !== "sweets";
+    $("macroWrap").hidden = meal.id === "sweets";
     validate();
     overlay.classList.add("open");
     setTimeout(function () { fName.focus(); }, 50);
@@ -1424,7 +1920,8 @@
       calories: parseInt(fCal.value.trim(), 10),
       protein: numOrNull(fProtein.value),
       carbs: numOrNull(fCarbs.value),
-      fat: numOrNull(fFat.value)
+      fat: numOrNull(fFat.value),
+      sugar: currentMeal.id === "sweets" ? numOrNull($("fSugar").value) : null
     });
     save(KEYS.entries, entries);
     closeSheet();
