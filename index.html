@@ -45,7 +45,7 @@
     padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 90px);
   }
   main { max-width: 560px; margin: 0 auto; padding: 0 16px; }
-  .view[hidden] { display: none; }
+  [hidden] { display: none !important; }
   header { padding: 20px 4px 8px; }
   header h1 { margin: 0; font-size: 32px; }
   header p { margin: 2px 0 0; color: var(--muted); }
@@ -188,6 +188,21 @@
   .chart .bar-water { fill: var(--water); }
   .chart .bar-water-dim { fill: var(--water); opacity: .4; }
 
+  /* Sharing */
+  .check { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 16px; }
+  .check input { width: 22px; height: 22px; flex: none; }
+  .btn-row.share button.primary { background: var(--accent); }
+  .linkbox {
+    display: block; width: 100%; margin-top: 12px; font-size: 12px; padding: 10px;
+    border-radius: 10px; border: 1px solid var(--line); background: var(--bg);
+    color: var(--text); word-break: break-all; font-family: inherit;
+  }
+  .sday { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .sday:last-child { border-bottom: 0; }
+  .sday-head { display: flex; justify-content: space-between; font-weight: 600; }
+  .smeal { font-size: 14px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  .smeal b { color: var(--text); font-weight: 600; }
+
   /* Tab bar */
   .tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
@@ -247,6 +262,7 @@
   <section id="view-week" class="view" hidden></section>
   <section id="view-weight" class="view" hidden></section>
   <section id="view-settings" class="view" hidden></section>
+  <section id="view-shared" class="view" hidden></section>
   <footer>BiteLog is a tracking tool, not medical advice.<br>All data stays on this device.</footer>
 </main>
 
@@ -436,7 +452,8 @@
     return {
       sex: null, age: null, heightCm: null, targetKg: null,
       activity: 1.2, pace: 0.5, customGoal: null, units: "kg", lastBackup: null,
-      glassMl: 250, waterMl: 2000, sweetsLimit: null, eatBack: 0.5
+      glassMl: 250, waterMl: 2000, sweetsLimit: null, eatBack: 0.5,
+      waterAuto: true, waterPerKg: 35, shareName: ""
     };
   }
   var profile = Object.assign(defaultProfile(), load(KEYS.profile, {}));
@@ -657,7 +674,7 @@
 
   function waterCard() {
     var key = todayKey();
-    var ml = waterOn(key), target = profile.waterMl;
+    var ml = waterOn(key), target = waterTargetFor(key);
     var card = el("div", "card");
     var head = el("div", "card-head");
     head.appendChild(el("h3", "", "💧 Water"));
@@ -671,6 +688,11 @@
     card.appendChild(track);
     card.appendChild(el("p", "small", glassesOf(ml) + " of " + glassesOf(target) + " glasses (" + profile.glassMl + " ml each)" +
       (ml >= target ? " – goal reached!" : "")));
+    var wExtra = waterExtra(key);
+    if (profile.waterAuto && autoWaterMl(profile.waterPerKg)) {
+      card.appendChild(el("p", "muted small", "Target: " + profile.waterPerKg + " ml per kg of your weight" +
+        (wExtra > 0 ? ", plus " + fmtL(wExtra) + " for today's workout" : "") + "."));
+    }
 
     var row = el("div", "btn-row");
     var minus = el("button", "", "− Glass");
@@ -887,7 +909,7 @@
       days.push({
         key: k, date: d, label: DAYS[i],
         kcal: sumCal(list), logged: list.length > 0, future: k > tk, today: k === tk,
-        water: waterOn(k),
+        water: waterOn(k), waterTarget: waterTargetFor(k),
         sweets: sumCal(sw),
         sugar: sw.reduce(function (s, e) { return s + (e.sugar || 0); }, 0),
         exMin: wk.reduce(function (s, x) { return s + x.minutes; }, 0),
@@ -966,12 +988,12 @@
     var prev = el("button", "", "‹");
     prev.type = "button";
     prev.setAttribute("aria-label", "Previous week");
-    prev.addEventListener("click", function () { weekOffset--; renderWeek(); });
+    prev.addEventListener("click", function () { weekOffset--; shareLink = null; renderWeek(); });
     var next = el("button", "", "›");
     next.type = "button";
     next.setAttribute("aria-label", "Next week");
     next.disabled = weekOffset >= 0;
-    next.addEventListener("click", function () { if (weekOffset < 0) { weekOffset++; renderWeek(); } });
+    next.addEventListener("click", function () { if (weekOffset < 0) { weekOffset++; shareLink = null; renderWeek(); } });
     var mid = el("div", "", shortDate(wd.monday) + " – " + shortDate(wd.sunday));
     mid.appendChild(el("small", "", weekOffset === 0 ? "This week" : (weekOffset === -1 ? "Last week" : Math.abs(weekOffset) + " weeks ago")));
     nav.appendChild(prev); nav.appendChild(mid); nav.appendChild(next);
@@ -993,15 +1015,17 @@
 
     if (weekMetric === "water") {
       // ---------------- WATER ----------------
-      var wTarget = profile.waterMl;
+      var wBase = waterBase();
       chartCard.appendChild(el("h3", "", "Water per day (litres)"));
       chartCard.appendChild(barChart(days, function (d) { return d.water; }, {
-        line: wTarget, minMax: wTarget,
+        line: wBase, minMax: wBase,
         fmtVal: function (v) { return (v / 1000).toFixed(1); },
-        cls: function (d, v) { return v >= wTarget ? "bar-water" : "bar-water-dim"; },
+        cls: function (d, v) { return v >= d.waterTarget ? "bar-water" : "bar-water-dim"; },
         label: "Water drunk each day of the week"
       }));
-      chartCard.appendChild(el("p", "muted small", "Dashed line = your target (" + fmtL(wTarget) + "). Bars are faded until you reach it."));
+      chartCard.appendChild(el("p", "muted small", "Dashed line = your daily target (" + fmtL(wBase) + ")." +
+        (profile.waterAuto ? " On workout days your target is a little higher." : "") +
+        " Bars are faded until you reach that day's target."));
 
       sum.appendChild(el("h3", "", "Water this week"));
       var wl = days.filter(function (d) { return d.water > 0; });
@@ -1010,10 +1034,11 @@
       } else {
         var wTotal = sumOf(wl, function (d) { return d.water; });
         var wAvg = Math.round(wTotal / wl.length);
-        var wHit = wl.filter(function (d) { return d.water >= wTarget; }).length;
-        sum.appendChild(el("p", "", wAvg >= wTarget
+        var wAvgTarget = Math.round(sumOf(wl, function (d) { return d.waterTarget; }) / wl.length);
+        var wHit = wl.filter(function (d) { return d.water >= d.waterTarget; }).length;
+        sum.appendChild(el("p", "", wAvg >= wAvgTarget
           ? "Great: you average " + fmtL(wAvg) + " a day, at or above your target."
-          : "You average " + fmtL(wAvg) + " a day. Your target is " + fmtL(wTarget) + "."));
+          : "You average " + fmtL(wAvg) + " a day. Your target is about " + fmtL(wAvgTarget) + "."));
         kvRows(sum, [
           ["Days logged", wl.length + " of " + elapsed],
           ["Average per logged day", fmtL(wAvg) + " (" + glassesOf(wAvg) + " glasses)"],
@@ -1142,6 +1167,7 @@
     root.appendChild(chartCard);
     root.appendChild(sum);
     root.appendChild(progressCard(c));
+    root.appendChild(shareCard());
   }
 
   // ======================================================
@@ -1436,16 +1462,45 @@
     tForm.autocomplete = "off";
     tForm.appendChild(el("h3", "", "Daily targets"));
     var sGlass = select("sGlass", [[200, "Small glass: 200 ml"], [250, "Standard glass: 250 ml"], [300, "Large glass: 300 ml"], [330, "Big glass or can: 330 ml"], [500, "Bottle: 500 ml"]], profile.glassMl);
+    var sWaterMode = select("sWaterMode", [["auto", "Automatic, based on my weight (recommended)"], ["manual", "My own amount"]], profile.waterAuto ? "auto" : "manual");
+    var sPerKg = select("sPerKg", [[30, "30 ml per kg (lower)"], [35, "35 ml per kg (usual)"], [40, "40 ml per kg (higher)"]], profile.waterPerKg);
     var sWater = input("sWater", "text", "decimal", String(profile.waterMl / 1000), "e.g. 2");
-    var lw2 = latestWeight();
-    var suggest = lw2 ? Math.min(3.5, Math.max(1.5, Math.round(lw2.kg * 33 / 250) / 4)) : null;
+    var wPrev = el("div", "hint");
     var cc = calc();
     var sSweets = input("sSweets", "text", "numeric", profile.sweetsLimit, "Leave empty for 10% of your goal");
     var sEat = select("sEat", [[0, "Off: exercise is only a log"], [0.5, "Half of it (recommended)"], [1, "All of it"]], profile.eatBack);
     tForm.appendChild(field("Glass size", sGlass));
-    tForm.appendChild(field("Daily water target (litres)", sWater,
-      "Water is shown in litres. " + (suggest ? "A common guide is about 33 ml per kg of body weight, roughly " + suggest + " L for you. " : "") +
-      "Needs vary with heat, exercise and health."));
+    tForm.appendChild(field("Daily water target", sWaterMode,
+      "Water needs depend mostly on body weight, and drinks and food both count. If your doctor limits your fluids (for example with heart or kidney problems), follow their advice instead."));
+    var perKgField = field("Water per kg of body weight", sPerKg, "Go higher if you are very active or the weather is hot.");
+    var manualField = field("My daily water target (litres)", sWater);
+    tForm.appendChild(perKgField);
+    tForm.appendChild(manualField);
+    tForm.appendChild(wPrev);
+    function updateWaterPreview() {
+      var auto = sWaterMode.value === "auto";
+      var glass = parseInt(sGlass.value, 10);
+      var ml = null;
+      if (auto) ml = autoWaterMl(parseInt(sPerKg.value, 10));
+      else { var l = num(sWater.value); if (l > 0) ml = Math.round(l * 1000); }
+      if (ml) {
+        wPrev.textContent = "Target now: " + fmtL(ml) + " (about " + (Math.round(ml / glass * 10) / 10) + " glasses)" +
+          (auto ? ", plus about 0.5 L for each hour of exercise." : ".");
+      } else {
+        wPrev.textContent = auto ? "Enter your weight above to calculate this." : "";
+      }
+    }
+    function syncWater() {
+      var auto = sWaterMode.value === "auto";
+      perKgField.hidden = !auto;
+      manualField.hidden = auto;
+      updateWaterPreview();
+    }
+    sWaterMode.addEventListener("change", syncWater);
+    sPerKg.addEventListener("change", updateWaterPreview);
+    sGlass.addEventListener("change", updateWaterPreview);
+    sWater.addEventListener("input", updateWaterPreview);
+    syncWater();
     tForm.appendChild(field("Daily sweets limit (kcal, optional)", sSweets,
       cc ? "Leave empty to use 10% of your daily goal, about " + fmt(round10(cc.goal * 0.1)) + " kcal." : "Leave empty to use 10% of your daily calorie goal."));
     tForm.appendChild(field("Add exercise calories to my daily budget", sEat,
@@ -1455,12 +1510,15 @@
     tForm.appendChild(tSave);
     tForm.addEventListener("submit", function (ev) {
       ev.preventDefault();
+      var auto = sWaterMode.value === "auto";
       var liters = num(sWater.value);
       var sw = sSweets.value.trim() === "" ? null : parseInt(sSweets.value, 10);
-      if (!(liters >= 0.5 && liters <= 6)) { toast("Please enter a water target between 0.5 and 6 litres.", true); return; }
+      if (!auto && !(liters >= 0.5 && liters <= 6)) { toast("Please enter a water target between 0.5 and 6 litres.", true); return; }
       if (sw !== null && !(sw >= 20 && sw <= 2000)) { toast("The sweets limit should be between 20 and 2,000 kcal, or leave it empty.", true); return; }
       profile.glassMl = parseInt(sGlass.value, 10);
-      profile.waterMl = Math.round(liters * 1000);
+      profile.waterAuto = auto;
+      profile.waterPerKg = parseInt(sPerKg.value, 10);
+      if (!auto) profile.waterMl = Math.round(liters * 1000);
       profile.sweetsLimit = sw;
       profile.eatBack = parseFloat(sEat.value);
       saveProfile();
@@ -1580,6 +1638,28 @@
   function fmtL(ml) { return (ml / 1000).toFixed(ml % 100 === 0 ? 1 : 2) + " L"; }
   function glassesOf(ml) { return String(Math.round(ml / profile.glassMl * 10) / 10); }
 
+  // Daily water target: ml per kg of body weight (limited to a sensible range)
+  function autoWaterMl(perKg) {
+    var lw = latestWeight();
+    if (!lw) return null;
+    var ml = Math.min(4000, Math.max(1500, lw.kg * perKg));
+    return Math.round(ml / 50) * 50;
+  }
+  function waterBase() {
+    if (profile.waterAuto) {
+      var a = autoWaterMl(profile.waterPerKg);
+      if (a) return a;
+    }
+    return profile.waterMl;
+  }
+  // About 0.5 L extra per hour of exercise (automatic mode only)
+  function waterExtra(key) {
+    if (!profile.waterAuto || !autoWaterMl(profile.waterPerKg)) return 0;
+    var mins = workoutsOn(key).reduce(function (s, w) { return s + w.minutes; }, 0);
+    return Math.round(mins * 500 / 60 / 50) * 50;
+  }
+  function waterTargetFor(key) { return waterBase() + waterExtra(key); }
+
   function addWater(ml) {
     var k = todayKey();
     var before = waterOn(k);
@@ -1587,7 +1667,8 @@
     if (after === 0) delete water[k]; else water[k] = after;
     save(KEYS.water, water);
     renderAll();
-    if (ml > 0 && before < profile.waterMl && after >= profile.waterMl) toast("Water goal reached 💧");
+    var wGoal = waterTargetFor(k);
+    if (ml > 0 && before < wGoal && after >= wGoal) toast("Water goal reached 💧");
   }
 
   function sweetsLimit(c) {
@@ -1656,6 +1737,452 @@
     toast("Workout saved");
     renderAll();
   });
+
+  // ======================================================
+  // Sharing a week with friends
+  // ======================================================
+  var shareOpts = { food: true, extra: true, weight: false };
+  var shareLink = null;
+  var sharedMode = false;
+
+  function round1(v) { return Math.round(v * 10) / 10; }
+  function dayLabel(d) { return DAYS[(d.getDay() + 6) % 7] + " " + shortDate(d); }
+
+  function copyText(text) {
+    function fallback() {
+      var ok = false;
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch (e) { ok = false; }
+      if (ok) toast("Copied. Paste it into any chat.");
+      else toast("Could not copy. Select the text and copy it by hand.", true);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast("Copied. Paste it into any chat."); }).catch(fallback);
+    } else fallback();
+  }
+
+  function buildShareText() {
+    var wd = weekData(weekOffset), c = calc();
+    var lines = [];
+    var who = profile.shareName ? profile.shareName + "'s" : "My";
+    lines.push(who + " BiteLog week: " + shortDate(wd.monday) + " – " + shortDate(wd.sunday));
+    var logged = wd.days.filter(function (d) { return d.logged; });
+    if (logged.length === 0) lines.push("", "Nothing logged yet.");
+    logged.forEach(function (d) {
+      lines.push("", dayLabel(d.date) + ": " + fmt(d.kcal) + " kcal");
+      if (shareOpts.food) {
+        MEALS.forEach(function (m) {
+          var items = entries.filter(function (e) { return e.date === d.key && e.meal === m.id; });
+          if (items.length) lines.push("  " + m.label + ": " + items.map(function (e) { return e.name + " (" + e.calories + ")"; }).join(", "));
+        });
+      }
+      if (shareOpts.extra) {
+        var bits = [];
+        if (d.water > 0) bits.push("Water " + fmtL(d.water));
+        workoutsOn(d.key).forEach(function (x) { bits.push(activityById(x.type).label + " " + x.minutes + " min"); });
+        if (bits.length) lines.push("  " + bits.join(" · "));
+      }
+    });
+    if (logged.length) {
+      var avg = sumOf(logged, function (d) { return d.kcal; }) / logged.length;
+      lines.push("", "Average: " + fmt(avg) + " kcal per logged day" + (c ? " (daily goal " + fmt(c.goal) + ")" : ""));
+    }
+    if (shareOpts.extra) {
+      var mins = sumOf(wd.days, function (d) { return d.exMin; });
+      if (mins > 0) lines.push("Exercise: " + mins + " min this week");
+      var wl = wd.days.filter(function (d) { return d.water > 0; });
+      if (wl.length) lines.push("Water: " + fmtL(Math.round(sumOf(wl, function (d) { return d.water; }) / wl.length)) + " per day on average");
+    }
+    if (shareOpts.weight && latestWeight()) {
+      lines.push("Weight: " + fmtW(latestWeight().kg) + (profile.targetKg ? " (target " + fmtW(profile.targetKg) + ")" : ""));
+    }
+    return lines.join("\n");
+  }
+
+  // ---- Snapshot (the data that goes inside a share link) ----
+  function buildSnapshot() {
+    var wd = weekData(weekOffset), c = calc();
+    var snap = { v: 1, n: (profile.shareName || "").slice(0, 40), m: keyOf(wd.monday), g: c ? c.goal : null, d: [] };
+    if (shareOpts.extra) snap.wt = waterBase();
+    wd.days.forEach(function (d) {
+      var day = { k: d.kcal, b: d.bonus };
+      if (shareOpts.food) {
+        day.f = entries.filter(function (e) { return e.date === d.key; })
+          .map(function (e) { return [e.meal, e.name.slice(0, 60), e.calories]; });
+      }
+      if (shareOpts.extra) {
+        day.w = d.water;
+        day.t = d.waterTarget;
+        day.x = workoutsOn(d.key).map(function (x) { return [x.type, x.minutes, x.kcal]; });
+      }
+      snap.d.push(day);
+    });
+    if (shareOpts.weight && weights.length && profile.targetKg) {
+      snap.wg = {
+        s: round1(toDisp(weights[0].kg)), n: round1(toDisp(latestWeight().kg)),
+        t: round1(toDisp(profile.targetKg)), u: unitLabel()
+      };
+    }
+    return snap;
+  }
+
+  // Validates untrusted data from a link and returns a clean copy (or null)
+  function cleanSnapshot(o) {
+    if (!o || typeof o !== "object" || o.v !== 1 || !Array.isArray(o.d) || o.d.length !== 7) return null;
+    if (typeof o.m !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(o.m) || keyOf(parseKey(o.m)) !== o.m) return null;
+    function n(v, lo, hi) { return (typeof v === "number" && isFinite(v) && v >= lo && v <= hi) ? v : null; }
+    var mealIds = MEALS.map(function (m) { return m.id; });
+    var actIds = ACTIVITIES.map(function (a) { return a.id; });
+    var out = {
+      name: typeof o.n === "string" ? o.n.slice(0, 40) : "",
+      monday: o.m, goal: n(o.g, 500, 6000), days: [], weight: null
+    };
+    for (var i = 0; i < 7; i++) {
+      var x = o.d[i];
+      if (!x || typeof x !== "object") return null;
+      var day = { kcal: n(x.k, 0, 50000) || 0, bonus: n(x.b, 0, 5000) || 0, food: null, water: null, wTarget: null, ex: null };
+      if (Array.isArray(x.f)) {
+        day.food = x.f.slice(0, 100).filter(Array.isArray).map(function (f) {
+          return {
+            meal: mealIds.indexOf(f[0]) !== -1 ? f[0] : "snacks",
+            name: typeof f[1] === "string" ? f[1].slice(0, 60) : "?",
+            kcal: n(f[2], 0, 20000) || 0
+          };
+        });
+      }
+      if (x.w !== undefined) { day.water = n(x.w, 0, 20000) || 0; day.wTarget = n(x.t, 0, 20000); }
+      if (Array.isArray(x.x)) {
+        day.ex = x.x.slice(0, 20).filter(Array.isArray).map(function (e) {
+          return { type: actIds.indexOf(e[0]) !== -1 ? e[0] : "other", min: n(e[1], 0, 600) || 0, kcal: n(e[2], 0, 5000) || 0 };
+        });
+      }
+      out.days.push(day);
+    }
+    if (o.wg && typeof o.wg === "object") {
+      var s = n(o.wg.s, 20, 700), nw = n(o.wg.n, 20, 700), t = n(o.wg.t, 20, 700);
+      if (s !== null && nw !== null && t !== null) out.weight = { s: s, n: nw, t: t, u: o.wg.u === "lb" ? "lb" : "kg" };
+    }
+    return out;
+  }
+
+  // ---- Encoding: JSON -> (deflate) -> base64url ----
+  function b64urlEncode(bytes) {
+    var s = "";
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function b64urlDecode(str) {
+    str = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (str.length % 4) str += "=";
+    var bin = atob(str);
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function deflateBytes(bytes) {
+    var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    return new Response(stream).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  function inflateBounded(bytes, limit) {
+    var reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+    var chunks = [], total = 0;
+    function pump() {
+      return reader.read().then(function (r) {
+        if (r.done) {
+          var out = new Uint8Array(total), pos = 0;
+          chunks.forEach(function (c) { out.set(c, pos); pos += c.length; });
+          return out;
+        }
+        total += r.value.length;
+        if (total > limit) { try { reader.cancel(); } catch (e) {} throw new Error("too big"); }
+        chunks.push(r.value);
+        return pump();
+      });
+    }
+    return pump();
+  }
+  function packSnapshot(obj) {
+    var bytes = new TextEncoder().encode(JSON.stringify(obj));
+    function plain() { return "j." + b64urlEncode(bytes); }
+    if (typeof CompressionStream === "function" && typeof Blob === "function" && typeof Response === "function") {
+      return deflateBytes(bytes).then(function (z) {
+        var zs = "z." + b64urlEncode(z), js = plain();
+        return zs.length < js.length ? zs : js;
+      }).catch(plain);
+    }
+    return Promise.resolve(plain());
+  }
+  function unpackSnapshot(packed) {
+    var kind = packed.slice(0, 2), bytes;
+    try { bytes = b64urlDecode(packed.slice(2)); } catch (e) { return Promise.reject(e); }
+    if (bytes.length > 60000) return Promise.reject(new Error("too big"));
+    function parse(b) { return JSON.parse(new TextDecoder().decode(b)); }
+    if (kind === "j.") {
+      try { return Promise.resolve(parse(bytes)); } catch (e) { return Promise.reject(e); }
+    }
+    if (typeof DecompressionStream !== "function") return Promise.reject(new Error("unsupported"));
+    return inflateBounded(bytes, 300000).then(parse);
+  }
+
+  // ---- Share card on the Week tab ----
+  function syncShareName(nameIn) {
+    var v = nameIn.value.trim().slice(0, 40);
+    if (v !== (profile.shareName || "")) { profile.shareName = v; saveProfile(); shareLink = null; }
+  }
+
+  function shareCard() {
+    var card = el("div", "card");
+    card.appendChild(el("h3", "", "Share this week with friends"));
+    card.appendChild(el("p", "muted small", "Your data stays on your phone. You choose what to include and your friends only see that snapshot. Anyone who gets it can see everything you include, so share it only with people you trust."));
+
+    var nameIn = input("shareName", "text", null, profile.shareName || "", "Your name (optional)");
+    nameIn.maxLength = 40;
+    nameIn.addEventListener("change", function () { syncShareName(nameIn); });
+    card.appendChild(field("Name shown to your friends", nameIn));
+
+    [["food", "What I ate (food names)"], ["extra", "Water and exercise"], ["weight", "My weight and target"]].forEach(function (o) {
+      var lab = el("label", "check");
+      var cb = el("input");
+      cb.type = "checkbox";
+      cb.checked = !!shareOpts[o[0]];
+      cb.addEventListener("change", function () { shareOpts[o[0]] = cb.checked; shareLink = null; renderWeek(); });
+      lab.appendChild(cb);
+      lab.appendChild(el("span", "", o[1]));
+      card.appendChild(lab);
+    });
+    card.appendChild(el("p", "muted small", "Calories per day are always included."));
+
+    var row = el("div", "btn-row share");
+    var tBtn = el("button", "primary", "Share as text");
+    tBtn.type = "button";
+    tBtn.addEventListener("click", function () {
+      syncShareName(nameIn);
+      var text = buildShareText();
+      if (navigator.share) {
+        navigator.share({ title: "My BiteLog week", text: text }).catch(function (e) {
+          if (e && e.name === "AbortError") return;
+          copyText(text);
+        });
+      } else copyText(text);
+    });
+    var lBtn = el("button", "", "Create a link");
+    lBtn.type = "button";
+    lBtn.addEventListener("click", function () {
+      syncShareName(nameIn);
+      packSnapshot(buildSnapshot()).then(function (packed) {
+        shareLink = location.origin + location.pathname + "#s=" + packed;
+        renderWeek();
+        var box = $("shareLinkBox");
+        if (box && box.scrollIntoView) box.scrollIntoView({ block: "center" });
+      }).catch(function () { toast("Could not create the link. Try Share as text.", true); });
+    });
+    row.appendChild(tBtn);
+    row.appendChild(lBtn);
+    card.appendChild(row);
+
+    if (shareLink) {
+      var ta = el("textarea", "linkbox");
+      ta.id = "shareLinkBox";
+      ta.readOnly = true;
+      ta.rows = 4;
+      ta.value = shareLink;
+      ta.addEventListener("focus", function () { ta.select(); });
+      card.appendChild(ta);
+      var row2 = el("div", "btn-row share");
+      var sBtn = el("button", "primary", "Share link");
+      sBtn.type = "button";
+      sBtn.addEventListener("click", function () {
+        if (navigator.share) {
+          navigator.share({ title: "My BiteLog week", text: "My week on BiteLog", url: shareLink }).catch(function (e) {
+            if (e && e.name === "AbortError") return;
+            copyText(shareLink);
+          });
+        } else copyText(shareLink);
+      });
+      var cBtn = el("button", "", "Copy link");
+      cBtn.type = "button";
+      cBtn.addEventListener("click", function () { copyText(shareLink); });
+      row2.appendChild(sBtn);
+      row2.appendChild(cBtn);
+      card.appendChild(row2);
+      card.appendChild(el("p", "muted small", "The link opens a read-only page of this week. The numbers are inside the link itself and are not stored on any server." +
+        (shareLink.length > 6000 ? " This link is long, so some chat apps may cut it. If that happens, use Share as text or leave out the food names." : "")));
+    }
+    return card;
+  }
+
+  // ---- What a friend sees when opening a link ----
+  function startSharedView(packed) {
+    sharedMode = true;
+    $("tabs").hidden = true;
+    ["today", "week", "weight", "settings"].forEach(function (v) { $("view-" + v).hidden = true; });
+    var root = $("view-shared");
+    root.hidden = false;
+    root.textContent = "";
+    root.appendChild(el("p", "muted", "Opening the shared week…"));
+    unpackSnapshot(packed).then(function (obj) {
+      var snap = cleanSnapshot(obj);
+      if (!snap) throw new Error("invalid");
+      renderSharedView(snap);
+    }).catch(function () { renderSharedError(); });
+  }
+
+  function openOwnApp() {
+    var b = el("button", "btn secondary", "Open my own BiteLog");
+    b.type = "button";
+    b.addEventListener("click", function () { location.href = location.pathname; });
+    return b;
+  }
+
+  function renderSharedError() {
+    var root = $("view-shared");
+    root.textContent = "";
+    var head = el("header");
+    head.appendChild(el("h1", "", "BiteLog"));
+    root.appendChild(head);
+    var card = el("div", "card");
+    card.appendChild(el("p", "", "This shared link could not be opened. It may be damaged, cut off by a chat app, or too new for this browser."));
+    card.appendChild(el("p", "muted small", "Ask your friend to send it again, or to use Share as text instead."));
+    card.appendChild(openOwnApp());
+    root.appendChild(card);
+  }
+
+  function renderSharedView(snap) {
+    var root = $("view-shared");
+    root.textContent = "";
+    var monday = parseKey(snap.monday);
+    var days = snap.days.map(function (x, i) {
+      var dt = addDays(monday, i);
+      return {
+        key: keyOf(dt), date: dt, label: DAYS[i], today: false, x: x,
+        kcal: x.kcal, bonus: x.bonus, logged: x.kcal > 0 || !!(x.food && x.food.length)
+      };
+    });
+    var goal = snap.goal;
+
+    var head = el("header");
+    head.appendChild(el("h1", "", snap.name ? snap.name + "'s week" : "A friend's week"));
+    head.appendChild(el("p", "", shortDate(monday) + " – " + shortDate(addDays(monday, 6)) + " · shared from BiteLog"));
+    root.appendChild(head);
+
+    var chartCard = el("div", "card");
+    chartCard.appendChild(el("h3", "", "Calories per day"));
+    chartCard.appendChild(barChart(days, function (d) { return d.kcal; }, {
+      line: goal, minMax: 1000, fmtVal: fmt,
+      cls: function (d, v) { return goal && v > goal + d.bonus ? "bar-over" : "bar"; },
+      label: "Calories eaten each day of the week"
+    }));
+    chartCard.appendChild(el("p", "muted small", goal
+      ? "Dashed line = daily calorie goal (" + fmt(goal) + " kcal). Orange bars are over that day's budget."
+      : "Calories eaten each day."));
+    root.appendChild(chartCard);
+
+    var logged = days.filter(function (d) { return d.logged; });
+    var sum = el("div", "card");
+    sum.appendChild(el("h3", "", "Summary"));
+    if (logged.length === 0) {
+      sum.appendChild(el("p", "muted", "Nothing was logged in this week."));
+    } else {
+      var total = sumOf(logged, function (d) { return d.kcal; });
+      var avg = total / logged.length;
+      var rows = [["Days logged", logged.length + " of 7"], ["Average per logged day", fmt(avg) + " kcal"]];
+      if (goal) {
+        var avgBudget = goal + sumOf(logged, function (d) { return d.bonus; }) / logged.length;
+        rows.push(["Daily goal", fmt(goal) + " kcal"]);
+        var diff = avg - avgBudget;
+        sum.appendChild(el("p", "", diff <= 0
+          ? "On average " + fmt(-diff) + " kcal under the daily budget."
+          : "On average " + fmt(diff) + " kcal over the daily budget."));
+      }
+      kvRows(sum, rows);
+    }
+    root.appendChild(sum);
+
+    var hasFood = days.some(function (d) { return d.x.food !== null; });
+    var hasExtra = days.some(function (d) { return d.x.water !== null; });
+
+    if ((hasFood || hasExtra) && logged.length) {
+      var dayCard = el("div", "card");
+      dayCard.appendChild(el("h3", "", hasFood ? "What was eaten" : "Day by day"));
+      days.forEach(function (d) {
+        var x = d.x;
+        var bits = [];
+        if (x.water) bits.push("Water " + fmtL(x.water));
+        if (x.ex) x.ex.forEach(function (e) { bits.push(activityById(e.type).label + " " + e.min + " min"); });
+        if (!d.logged && bits.length === 0) return;
+        var box = el("div", "sday");
+        var h = el("div", "sday-head");
+        h.appendChild(el("span", "", dayLabel(d.date)));
+        h.appendChild(el("span", "", fmt(d.kcal) + " kcal"));
+        box.appendChild(h);
+        if (x.food) {
+          MEALS.forEach(function (m) {
+            var items = x.food.filter(function (f) { return f.meal === m.id; });
+            if (!items.length) return;
+            var line = el("div", "smeal");
+            line.appendChild(el("b", "", m.label + ": "));
+            line.appendChild(document.createTextNode(items.map(function (f) { return f.name + " (" + f.kcal + ")"; }).join(", ")));
+            box.appendChild(line);
+          });
+        }
+        if (bits.length) box.appendChild(el("div", "smeal", bits.join(" · ")));
+        dayCard.appendChild(box);
+      });
+      root.appendChild(dayCard);
+    }
+
+    if (hasExtra) {
+      var xc = el("div", "card");
+      xc.appendChild(el("h3", "", "Water and exercise"));
+      var wl = days.filter(function (d) { return d.x.water > 0; });
+      var rowsX = [];
+      if (wl.length) {
+        var wAvg = Math.round(sumOf(wl, function (d) { return d.x.water; }) / wl.length);
+        rowsX.push(["Average water per logged day", fmtL(wAvg)]);
+        var hit = wl.filter(function (d) { return d.x.wTarget && d.x.water >= d.x.wTarget; }).length;
+        if (wl.some(function (d) { return d.x.wTarget; })) rowsX.push(["Water target reached", hit + " of " + wl.length + " logged days"]);
+      } else rowsX.push(["Water", "Nothing logged"]);
+      var exMin = sumOf(days, function (d) { return d.x.ex ? sumOf(d.x.ex, function (e) { return e.min; }) : 0; });
+      var exKcal = sumOf(days, function (d) { return d.x.ex ? sumOf(d.x.ex, function (e) { return e.kcal; }) : 0; });
+      rowsX.push(["Exercise", exMin > 0 ? exMin + " min (about " + fmt(exKcal) + " kcal)" : "None logged"]);
+      kvRows(xc, rowsX);
+      root.appendChild(xc);
+    }
+
+    if (snap.weight) {
+      var wg = snap.weight;
+      var wc = el("div", "card");
+      wc.appendChild(el("h3", "", "Weight progress"));
+      var pct = wg.s > wg.t ? Math.max(0, Math.min(100, (wg.s - wg.n) / (wg.s - wg.t) * 100)) : 100;
+      var track = el("div", "track");
+      var fill = el("div", "fill");
+      fill.style.width = pct.toFixed(0) + "%";
+      track.appendChild(fill);
+      wc.appendChild(track);
+      var triple = el("div", "triple");
+      [["Start", wg.s], ["Now", wg.n], ["Target", wg.t]].forEach(function (t) {
+        var d = el("div");
+        d.appendChild(el("b", "", t[1].toFixed(1) + " " + wg.u));
+        d.appendChild(document.createTextNode(t[0]));
+        triple.appendChild(d);
+      });
+      wc.appendChild(triple);
+      root.appendChild(wc);
+    }
+
+    var note = el("div", "card");
+    note.appendChild(el("p", "muted small", "This is a read-only snapshot. Everything you see is stored inside the link, not on a server. BiteLog is a tracking tool, not medical advice."));
+    note.appendChild(openOwnApp());
+    root.appendChild(note);
+  }
 
   // ======================================================
   // Backup, restore and clearing data
@@ -1805,6 +2332,9 @@
       waterMl: inRange(p.waterMl, 500, 6000) || 2000,
       sweetsLimit: inRange(p.sweetsLimit, 20, 2000),
       eatBack: [0, 0.5, 1].indexOf(p.eatBack) !== -1 ? p.eatBack : 0.5,
+      waterAuto: p.waterAuto === false ? false : true,
+      waterPerKg: [30, 35, 40].indexOf(p.waterPerKg) !== -1 ? p.waterPerKg : 35,
+      shareName: typeof p.shareName === "string" ? p.shareName.slice(0, 40) : "",
       lastBackup: (typeof obj.exportedAt === "string" && !isNaN(Date.parse(obj.exportedAt))) ? new Date(obj.exportedAt).toISOString() : null
     };
     return { entries: es, weights: ws, workouts: xs, water: wat, profile: prof };
@@ -1930,14 +2460,19 @@
 
   // Refresh when the app returns to the foreground (e.g. after midnight)
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) renderAll();
+    if (!document.hidden && !sharedMode) renderAll();
   });
 
   // ======================================================
   // Start
   // ======================================================
-  renderAll();
-  switchTo(profileReady() ? "today" : "settings");
+  var sharedMatch = /^#s=([zj]\.[A-Za-z0-9_-]{1,60000})$/.exec(location.hash || "");
+  if (sharedMatch) {
+    startSharedView(sharedMatch[1]);       // a friend's read-only snapshot: never touches local data
+  } else {
+    renderAll();
+    switchTo(profileReady() ? "today" : "settings");
+  }
 
   // Ask the browser to keep this app's data safe from automatic clean-up
   try {
