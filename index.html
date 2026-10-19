@@ -19,6 +19,7 @@
     --muted: #6b7772;
     --accent: #2e9e6a;
     --danger: #d64545;
+    --warn: #d9822b;
     --line: #e3e8e5;
   }
   @media (prefers-color-scheme: dark) {
@@ -29,6 +30,7 @@
       --muted: #94a19b;
       --accent: #43c287;
       --danger: #ff6b6b;
+      --warn: #f0a04b;
       --line: #2a332f;
     }
   }
@@ -38,21 +40,57 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
-    padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 24px);
+    padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 90px);
   }
   main { max-width: 560px; margin: 0 auto; padding: 0 16px; }
+  .view[hidden] { display: none; }
   header { padding: 20px 4px 8px; }
   header h1 { margin: 0; font-size: 32px; }
   header p { margin: 2px 0 0; color: var(--muted); }
 
-  .total {
-    background: var(--card); border-radius: 16px; padding: 16px;
-    display: flex; justify-content: space-between; align-items: baseline;
-    margin: 12px 0 16px;
+  .card { background: var(--card); border-radius: 16px; padding: 16px; margin: 12px 0; }
+  .card h3 { margin: 0 0 10px; font-size: 17px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  p { line-height: 1.4; }
+  .kv {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 9px 0; border-bottom: 1px solid var(--line);
   }
-  .total span { color: var(--muted); }
-  .total strong { font-size: 26px; }
+  .kv:last-child { border-bottom: 0; }
+  .kv span:first-child { color: var(--muted); }
+  .kv span:last-child { font-weight: 600; text-align: right; }
+  .note {
+    background: rgba(217,130,43,.13); border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; margin: 8px 0; line-height: 1.4;
+  }
+  .btn {
+    display: block; width: 100%; border: 0; border-radius: 12px;
+    background: var(--accent); color: #fff; font-size: 17px; font-weight: 600;
+    padding: 14px; cursor: pointer; margin-top: 12px;
+  }
+  .btn.secondary { background: var(--bg); color: var(--text); }
+  .btn.danger { background: none; color: var(--danger); border: 1px solid var(--danger); }
 
+  /* Ring */
+  .ring-card { text-align: center; }
+  .ring-wrap { position: relative; width: 190px; height: 190px; margin: 4px auto 12px; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--line); stroke-width: 14; }
+  .ring-fg { fill: none; stroke: var(--accent); stroke-width: 14; stroke-linecap: round; }
+  .ring-fg.over { stroke: var(--warn); }
+  .ring-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+  }
+  .ring-center strong { font-size: 34px; line-height: 1.1; }
+  .ring-center strong.over { color: var(--warn); }
+  .ring-center span { color: var(--muted); font-size: 13px; }
+  .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .stats3 b { display: block; font-size: 18px; }
+  .stats3 span { font-size: 12px; color: var(--muted); }
+
+  /* Meals */
   .meal { background: var(--card); border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
   .meal-head {
     display: flex; justify-content: space-between; align-items: center;
@@ -77,9 +115,71 @@
   }
   .empty { padding: 12px 16px; color: var(--muted); font-size: 14px; border-bottom: 1px solid var(--line); }
 
+  /* Week + progress */
+  .weeknav { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
+  .weeknav button {
+    border: 0; background: var(--card); color: var(--text);
+    width: 46px; height: 46px; border-radius: 12px; font-size: 22px; cursor: pointer;
+  }
+  .weeknav button:disabled { opacity: .35; }
+  .weeknav div { text-align: center; font-weight: 600; }
+  .weeknav div small { display: block; color: var(--muted); font-weight: 500; }
+  .track { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; margin: 10px 0 8px; }
+  .fill { height: 100%; background: var(--accent); border-radius: 6px; }
+  .triple { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+  .triple b { display: block; color: var(--text); font-size: 15px; }
+  .triple div:nth-child(2) { text-align: center; }
+  .triple div:last-child { text-align: right; }
+
+  svg.chart { width: 100%; height: auto; display: block; }
+  .chart text { fill: var(--muted); font-size: 10px; font-family: inherit; }
+  .chart .today-label { font-weight: 700; fill: var(--text); }
+  .chart .val { fill: var(--text); font-size: 9px; }
+  .chart .grid { stroke: var(--line); stroke-width: 1; }
+  .chart .bar { fill: var(--accent); }
+  .chart .bar-over { fill: var(--warn); }
+  .chart .goal { stroke: var(--text); stroke-width: 1; stroke-dasharray: 4 3; opacity: .6; }
+  .chart .tgt { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 4; }
+  .chart .wline { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .dot { fill: var(--accent); stroke: var(--card); stroke-width: 1.5; }
+
+  .wrow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .wrow:last-child { border-bottom: 0; }
+  .wrow .d { flex: 1; color: var(--muted); }
+  .wrow .v { font-weight: 600; }
+
+  /* Forms */
+  .seg { display: flex; gap: 3px; background: var(--bg); border-radius: 10px; padding: 3px; }
+  .seg button {
+    flex: 1; border: 0; background: none; color: var(--text);
+    padding: 11px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .field { margin: 12px 0; }
+  .field > label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%; font-size: 17px; padding: 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+
   footer { color: var(--muted); font-size: 12px; text-align: center; padding: 12px 8px; }
 
-  /* Add-food sheet */
+  /* Tab bar */
+  .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    display: flex; background: var(--card); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tabs button {
+    flex: 1; border: 0; background: none; color: var(--muted);
+    padding: 8px 0 7px; font-size: 11px; font-weight: 600; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .tabs button .ti { font-size: 21px; line-height: 1.1; }
+  .tabs button.on { color: var(--accent); }
+
+  /* Sheets */
   .overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.45);
     display: none; align-items: flex-end; justify-content: center; z-index: 10;
@@ -96,6 +196,7 @@
     width: 100%; font-size: 17px; padding: 12px; border-radius: 10px;
     border: 1px solid var(--line); background: var(--bg); color: var(--text);
   }
+  .sheet .field > label { margin: 0 0 4px; }
   .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .buttons { display: flex; gap: 10px; margin-top: 18px; }
   .buttons button {
@@ -105,25 +206,35 @@
   .btn-cancel { background: var(--bg); color: var(--text); }
   .btn-save { background: var(--accent); color: #fff; }
   .btn-save:disabled { opacity: .4; }
+
+  /* Toast */
+  .toast {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 84px);
+    transform: translateX(-50%); background: var(--text); color: var(--bg);
+    padding: 11px 16px; border-radius: 12px; font-size: 14px; max-width: 90%;
+    text-align: center; z-index: 20; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: var(--danger); color: #fff; }
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <h1>Today</h1>
-    <p id="dateLabel"></p>
-  </header>
-
-  <div class="total">
-    <span>Eaten today</span>
-    <strong id="totalKcal">0 kcal</strong>
-  </div>
-
-  <div id="meals"></div>
-
+  <section id="view-today" class="view"></section>
+  <section id="view-week" class="view" hidden></section>
+  <section id="view-weight" class="view" hidden></section>
+  <section id="view-settings" class="view" hidden></section>
   <footer>BiteLog is a tracking tool, not medical advice.<br>All data stays on this device.</footer>
 </main>
 
+<nav class="tabs" id="tabs">
+  <button type="button" data-view="today" class="on"><span class="ti">📖</span><span>Today</span></button>
+  <button type="button" data-view="week"><span class="ti">📅</span><span>Week</span></button>
+  <button type="button" data-view="weight"><span class="ti">⚖️</span><span>Weight</span></button>
+  <button type="button" data-view="settings"><span class="ti">⚙️</span><span>Settings</span></button>
+</nav>
+
+<!-- Add food sheet -->
 <div class="overlay" id="overlay">
   <form class="sheet" id="form" autocomplete="off">
     <h2 id="sheetTitle">Add food</h2>
@@ -146,6 +257,27 @@
   </form>
 </div>
 
+<!-- Log weight sheet -->
+<div class="overlay" id="wOverlay">
+  <form class="sheet" id="wForm" autocomplete="off">
+    <h2>Log weight</h2>
+    <div class="field">
+      <label for="wValue" id="wValueLabel">Weight</label>
+      <input id="wValue" type="text" inputmode="decimal" placeholder="e.g. 82.4">
+    </div>
+    <div class="field">
+      <label for="wDate">Date</label>
+      <input id="wDate" type="date">
+    </div>
+    <div class="buttons">
+      <button type="button" class="btn-cancel" id="wCancel">Cancel</button>
+      <button type="submit" class="btn-save" id="wSave">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
 <script>
 (function () {
   "use strict";
@@ -156,64 +288,305 @@
     { id: "dinner",    label: "Dinner",    icon: "🌙" },
     { id: "snacks",    label: "Snacks",    icon: "🥕" }
   ];
-  var KEY = "bitelog.entries.v1";
+  var KEYS = {
+    entries: "bitelog.entries.v1",
+    profile: "bitelog.profile.v1",
+    weights: "bitelog.weights.v1"
+  };
+  var LB = 2.2046226218;
+  var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  var SVGNS = "http://www.w3.org/2000/svg";
 
-  // ---------- storage ----------
-  function loadEntries() {
-    try { return JSON.parse(localStorage.getItem(KEY)) || []; }
-    catch (e) { return []; }
-  }
-  function saveEntries(list) {
-    localStorage.setItem(KEY, JSON.stringify(list));
-  }
-  var entries = loadEntries();
-
-  // ---------- helpers ----------
-  function todayKey() {
-    var d = new Date();
-    var m = String(d.getMonth() + 1).padStart(2, "0");
-    var day = String(d.getDate()).padStart(2, "0");
-    return d.getFullYear() + "-" + m + "-" + day;
-  }
-  function numOrNull(text) {
-    var t = String(text).replace(",", ".").trim();
-    if (t === "") return null;
-    var n = parseFloat(t);
-    return isNaN(n) ? null : n;
-  }
+  // ======================================================
+  // Small helpers
+  // ======================================================
+  function $(id) { return document.getElementById(id); }
   function el(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
     if (text !== undefined) e.textContent = text;
     return e;
   }
+  function svgEl(tag, attrs, cls) {
+    var e = document.createElementNS(SVGNS, tag);
+    if (cls) e.setAttribute("class", cls);
+    for (var k in attrs) { if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]); }
+    return e;
+  }
+  function load(key, fallback) {
+    try {
+      var v = JSON.parse(localStorage.getItem(key));
+      return v === null || v === undefined ? fallback : v;
+    } catch (e) { return fallback; }
+  }
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); }
+    catch (e) { toast("Could not save. Is your phone storage full?", true); }
+  }
+  function pad2(n) { return String(n).padStart(2, "0"); }
+  function keyOf(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function todayKey() { return keyOf(new Date()); }
+  function parseKey(k) { var p = k.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function fmt(n) { return Math.round(n).toLocaleString("en-GB"); }
+  function round10(n) { return Math.round(n / 10) * 10; }
+  function sumCal(list) { return list.reduce(function (s, e) { return s + e.calories; }, 0); }
+  function num(text) {
+    var t = String(text).replace(",", ".").trim();
+    if (t === "") return NaN;
+    return parseFloat(t);
+  }
+  function numOrNull(text) { var n = num(text); return isNaN(n) ? null : n; }
+  function signed(v, digits) {
+    var r = Math.abs(v).toFixed(digits);
+    if (parseFloat(r) === 0) return r;
+    return (v > 0 ? "+" : "−") + r;
+  }
+  function shortDate(d) { return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+  function longDate(d) { return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
 
-  // ---------- render ----------
-  function render() {
+  var toastTimer = null;
+  function toast(msg, isError) {
+    var t = $("toast");
+    t.textContent = msg;
+    t.className = "toast show" + (isError ? " error" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = "toast"; }, 3200);
+  }
+
+  // ======================================================
+  // State
+  // ======================================================
+  var entries = load(KEYS.entries, []);
+  var weights = load(KEYS.weights, []);
+  function defaultProfile() {
+    return {
+      sex: null, age: null, heightCm: null, targetKg: null,
+      activity: 1.2, pace: 0.5, customGoal: null, units: "kg", lastBackup: null
+    };
+  }
+  var profile = Object.assign(defaultProfile(), load(KEYS.profile, {}));
+  var weekOffset = 0;
+  var currentView = "today";
+
+  function saveProfile() { save(KEYS.profile, profile); }
+  function sortWeights() {
+    weights.sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+  }
+  sortWeights();
+  function latestWeight() { return weights.length ? weights[weights.length - 1] : null; }
+  function weightOnOrBefore(key) {
+    var found = null;
+    weights.forEach(function (w) { if (w.date <= key) found = w; });
+    return found;
+  }
+  function upsertWeight(date, kg) {
+    var i;
+    for (i = 0; i < weights.length; i++) {
+      if (weights[i].date === date) { weights[i].kg = kg; sortWeights(); save(KEYS.weights, weights); return; }
+    }
+    weights.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), date: date, kg: kg });
+    sortWeights();
+    save(KEYS.weights, weights);
+  }
+
+  // Units (everything is stored in kg; shown in the unit the user picked)
+  function unitLabel() { return profile.units === "lb" ? "lb" : "kg"; }
+  function toDisp(kg) { return profile.units === "lb" ? kg * LB : kg; }
+  function fromDisp(v) { return profile.units === "lb" ? v / LB : v; }
+  function fmtW(kg, digits) { return toDisp(kg).toFixed(digits === undefined ? 1 : digits) + " " + unitLabel(); }
+
+  // ======================================================
+  // Calorie calculation (BMI, BMR, TDEE, recommended goal)
+  // ======================================================
+  function profileReady() {
+    return !!(profile.sex && profile.age && profile.heightCm && profile.targetKg && latestWeight());
+  }
+  function bmiLabel(b) {
+    if (b < 18.5) return "Underweight";
+    if (b < 25) return "Healthy weight";
+    if (b < 30) return "Overweight";
+    return "Obesity";
+  }
+
+  function calc() {
+    if (!profileReady()) return null;
+    var w = latestWeight().kg;
+    var hm = profile.heightCm / 100;
+    var age = profile.age;
+    var bmi = w / (hm * hm);
+
+    // Mifflin-St Jeor equation: resting energy use per day
+    var bmr = 10 * w + 6.25 * profile.heightCm - 5 * age + (profile.sex === "m" ? 5 : -161);
+    var tdee = bmr * profile.activity;            // maintenance calories
+    var floor = profile.sex === "m" ? 1500 : 1200; // lowest suggested intake
+    var wantsLoss = w > profile.targetKg + 0.05;
+    var notes = [];
+    var deficit = 0;
+    var mode = "maintain";
+
+    if (age < 18) {
+      notes.push("BiteLog's weight-loss goals are made for adults. At your age, please talk to a doctor before trying to lose weight. Your goal is set to maintenance.");
+    } else if (bmi < 18.5) {
+      notes.push("Your BMI is under 18.5, which counts as underweight. BiteLog will not suggest a calorie deficit, so your goal is set to maintenance. Please talk to a doctor.");
+    } else if (wantsLoss) {
+      mode = "loss";
+      // 1 kg of body weight is roughly 7,700 kcal. Never cut more than 25% of maintenance.
+      deficit = Math.min(profile.pace * 7700 / 7, tdee * 0.25);
+    }
+
+    var rec = tdee - deficit;
+    if (mode === "loss" && rec < floor) {
+      rec = Math.min(floor, tdee);
+      notes.push("Your recommended goal was raised to " + fmt(floor) + " kcal, the lowest level we suggest without medical supervision.");
+    }
+    rec = round10(rec);
+
+    var goal = rec;
+    var custom = false;
+    if (profile.customGoal) {
+      goal = profile.customGoal;
+      custom = true;
+      if (goal < floor) notes.push("Your own goal of " + fmt(goal) + " kcal is below " + fmt(floor) + " kcal. Eating this little can be unsafe without medical supervision.");
+      if (wantsLoss && goal >= tdee) notes.push("Your own goal is at or above your maintenance calories, so you would not lose weight.");
+    }
+
+    var perDay = tdee - goal;                // average daily deficit with the chosen goal
+    var weeklyKg = perDay * 7 / 7700;        // expected change per week
+    if (custom && weeklyKg > 1) notes.push("Your own goal means losing more than 1 kg per week, which is faster than usually recommended.");
+
+    var targetBmi = profile.targetKg / (hm * hm);
+    if (wantsLoss && age >= 18 && targetBmi < 18.5) {
+      notes.push("Your target weight would give a BMI of " + targetBmi.toFixed(1) + ", which is underweight. Consider a target of at least " + fmtW(18.5 * hm * hm) + ".");
+    }
+
+    var weeks = (wantsLoss && weeklyKg > 0.05) ? (w - profile.targetKg) / weeklyKg : null;
+    return {
+      weightKg: w, bmi: bmi, bmr: bmr, tdee: tdee, floor: floor,
+      mode: mode, rec: rec, goal: goal, custom: custom,
+      perDay: perDay, weeklyKg: weeklyKg, targetBmi: targetBmi,
+      healthyMin: 18.5 * hm * hm, healthyMax: 24.9 * hm * hm,
+      weeks: weeks,
+      eta: weeks === null ? null : addDays(new Date(), Math.round(weeks * 7)),
+      wantsLoss: wantsLoss, notes: notes
+    };
+  }
+
+  // ======================================================
+  // Tabs
+  // ======================================================
+  function switchTo(name) {
+    currentView = name;
+    ["today", "week", "weight", "settings"].forEach(function (v) {
+      $("view-" + v).hidden = (v !== name);
+    });
+    var btns = $("tabs").querySelectorAll("button");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].className = btns[i].getAttribute("data-view") === name ? "on" : "";
+    }
+    if (name === "settings") renderSettings();
+    else renderAll();
+    window.scrollTo(0, 0);
+  }
+  $("tabs").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button");
+    if (b) switchTo(b.getAttribute("data-view"));
+  });
+
+  function renderAll() {
+    renderToday();
+    renderWeek();
+    renderWeight();
+  }
+
+  // ======================================================
+  // TODAY
+  // ======================================================
+  function ringEl(eaten, goal) {
+    var R = 76, C = 2 * Math.PI * R;
+    var wrap = el("div", "ring-wrap");
+    var svg = svgEl("svg", { viewBox: "0 0 190 190", "aria-hidden": "true" });
+    svg.appendChild(svgEl("circle", { cx: 95, cy: 95, r: R }, "ring-bg"));
+    var over = eaten > goal;
+    if (eaten > 0) {
+      var frac = Math.min(eaten / goal, 1);
+      var fg = svgEl("circle", { cx: 95, cy: 95, r: R, "stroke-dasharray": (frac * C).toFixed(1) + " " + C.toFixed(1) }, "ring-fg" + (over ? " over" : ""));
+      svg.appendChild(fg);
+    }
+    wrap.appendChild(svg);
+    var center = el("div", "ring-center");
+    var left = goal - eaten;
+    center.appendChild(el("strong", over ? "over" : "", fmt(Math.abs(left))));
+    center.appendChild(el("span", "", over ? "kcal over goal" : "kcal left"));
+    wrap.appendChild(center);
+    wrap.setAttribute("role", "img");
+    wrap.setAttribute("aria-label", fmt(eaten) + " of " + fmt(goal) + " kilocalories eaten");
+    return wrap;
+  }
+
+  function renderToday() {
+    var root = $("view-today");
+    root.textContent = "";
     var today = todayKey();
     var todays = entries.filter(function (e) { return e.date === today; });
+    var eaten = sumCal(todays);
+    var c = calc();
 
-    document.getElementById("dateLabel").textContent =
-      new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-    document.getElementById("totalKcal").textContent =
-      todays.reduce(function (s, e) { return s + e.calories; }, 0) + " kcal";
+    var head = el("header");
+    head.appendChild(el("h1", "", "Today"));
+    head.appendChild(el("p", "", new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })));
+    root.appendChild(head);
 
-    var root = document.getElementById("meals");
-    root.textContent = "";
+    var card = el("div", "card ring-card");
+    if (c) {
+      card.appendChild(ringEl(eaten, c.goal));
+      var stats = el("div", "stats3");
+      [["Goal", fmt(c.goal)], ["Eaten", fmt(eaten)], [eaten > c.goal ? "Over" : "Left", fmt(Math.abs(c.goal - eaten))]].forEach(function (s) {
+        var d = el("div");
+        d.appendChild(el("b", "", s[1]));
+        d.appendChild(el("span", "", s[0] + " (kcal)"));
+        stats.appendChild(d);
+      });
+      card.appendChild(stats);
+    } else {
+      card.appendChild(el("p", "muted", "Eaten today"));
+      card.appendChild(el("strong", "", fmt(eaten) + " kcal"));
+      card.lastChild.style.fontSize = "30px";
+      card.appendChild(el("p", "muted small", "Set up your profile to get a daily calorie goal and a progress ring."));
+      var setup = el("button", "btn", "Set up my calorie goal");
+      setup.type = "button";
+      setup.addEventListener("click", function () { switchTo("settings"); });
+      card.appendChild(setup);
+    }
+    root.appendChild(card);
+
+    if (needsBackup()) {
+      var bcard = el("div", "card");
+      bcard.appendChild(el("p", "", "💾 " + (profile.lastBackup
+        ? "It has been a while since your last backup."
+        : "You have not saved a backup yet.") + " Your data lives only on this phone."));
+      var bbtn = el("button", "btn secondary", "Save a backup");
+      bbtn.type = "button";
+      bbtn.addEventListener("click", function () {
+        switchTo("settings");
+        var dc = $("dataCard");
+        if (dc && dc.scrollIntoView) dc.scrollIntoView();
+      });
+      bcard.appendChild(bbtn);
+      root.appendChild(bcard);
+    }
 
     MEALS.forEach(function (meal) {
       var list = todays.filter(function (e) { return e.meal === meal.id; });
-      var sum = list.reduce(function (s, e) { return s + e.calories; }, 0);
+      var sum = sumCal(list);
 
-      var card = el("section", "meal");
-      var head = el("div", "meal-head");
-      head.appendChild(el("span", "", meal.icon + " " + meal.label));
-      head.appendChild(el("small", "", sum + " kcal"));
-      card.appendChild(head);
+      var mcard = el("section", "meal");
+      var mhead = el("div", "meal-head");
+      mhead.appendChild(el("span", "", meal.icon + " " + meal.label));
+      mhead.appendChild(el("small", "", sum + " kcal"));
+      mcard.appendChild(mhead);
 
-      if (list.length === 0) {
-        card.appendChild(el("div", "empty", "Nothing logged yet"));
-      }
+      if (list.length === 0) mcard.appendChild(el("div", "empty", "Nothing logged yet"));
       list.forEach(function (entry) {
         var row = el("div", "entry");
         var info = el("div", "info");
@@ -228,34 +601,796 @@
           if (confirm("Delete \"" + entry.name + "\"?")) removeEntry(entry.id);
         });
         row.appendChild(del);
-        card.appendChild(row);
+        mcard.appendChild(row);
       });
 
       var add = el("button", "add", "＋ Add food");
       add.type = "button";
       add.addEventListener("click", function () { openSheet(meal); });
-      card.appendChild(add);
-
-      root.appendChild(card);
+      mcard.appendChild(add);
+      root.appendChild(mcard);
     });
   }
 
   function removeEntry(id) {
     entries = entries.filter(function (e) { return e.id !== id; });
-    saveEntries(entries);
-    render();
+    save(KEYS.entries, entries);
+    renderAll();
   }
 
-  // ---------- add-food sheet ----------
-  var overlay = document.getElementById("overlay");
-  var form = document.getElementById("form");
-  var fName = document.getElementById("fName");
-  var fPortion = document.getElementById("fPortion");
-  var fCal = document.getElementById("fCal");
-  var fProtein = document.getElementById("fProtein");
-  var fCarbs = document.getElementById("fCarbs");
-  var fFat = document.getElementById("fFat");
-  var saveBtn = document.getElementById("saveBtn");
+  // ======================================================
+  // Shared progress card (start -> now -> target)
+  // ======================================================
+  function progressCard(c) {
+    var card = el("div", "card");
+    card.appendChild(el("h3", "", "Progress to target"));
+    if (!c) {
+      card.appendChild(el("p", "muted", "Fill in your profile and log your weight to see how you are moving toward your target."));
+      var go = el("button", "btn secondary", "Open settings");
+      go.type = "button";
+      go.addEventListener("click", function () { switchTo("settings"); });
+      card.appendChild(go);
+      return card;
+    }
+    var cur = latestWeight().kg;
+    var start = weights[0].kg;
+    var target = profile.targetKg;
+
+    if (start <= target + 0.05) {
+      card.appendChild(el("p", "", "You are at or below your target weight of " + fmtW(target) + ". Your goal is set to maintenance."));
+      return card;
+    }
+    var pct = Math.max(0, Math.min(100, (start - cur) / (start - target) * 100));
+    var track = el("div", "track");
+    var fill = el("div", "fill");
+    fill.style.width = pct.toFixed(0) + "%";
+    track.appendChild(fill);
+    track.setAttribute("role", "progressbar");
+    track.setAttribute("aria-valuenow", pct.toFixed(0));
+    track.setAttribute("aria-valuemin", "0");
+    track.setAttribute("aria-valuemax", "100");
+    card.appendChild(track);
+
+    var triple = el("div", "triple");
+    [["Start", fmtW(start)], ["Now", fmtW(cur)], ["Target", fmtW(target)]].forEach(function (t) {
+      var d = el("div");
+      d.appendChild(el("b", "", t[1]));
+      d.appendChild(document.createTextNode(t[0]));
+      triple.appendChild(d);
+    });
+    card.appendChild(triple);
+
+    var lost = start - cur;
+    var togo = Math.max(cur - target, 0);
+    var line = lost >= 0
+      ? fmtW(lost) + " lost so far (" + pct.toFixed(0) + "%), " + fmtW(togo) + " to go."
+      : "Up " + fmtW(-lost) + " since you started, " + fmtW(togo) + " to go.";
+    card.appendChild(el("p", "", line));
+
+    if (c.eta && c.weeks) {
+      card.appendChild(el("p", "muted small",
+        "At your current goal (about " + fmtW(c.weeklyKg, 2) + " per week) you could reach your target around " +
+        longDate(c.eta) + " (about " + Math.ceil(c.weeks) + " weeks). Progress usually slows as you get lighter, so treat this as a rough guide."));
+    }
+    return card;
+  }
+
+  // ======================================================
+  // WEEK
+  // ======================================================
+  function weekData(offset) {
+    var now = new Date();
+    var base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var dow = (base.getDay() + 6) % 7;          // Monday = 0
+    var monday = addDays(base, -dow + offset * 7);
+    var tk = todayKey();
+    var days = [];
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(monday, i);
+      var k = keyOf(d);
+      var list = entries.filter(function (e) { return e.date === k; });
+      days.push({ key: k, date: d, label: DAYS[i], kcal: sumCal(list), logged: list.length > 0, future: k > tk, today: k === tk });
+    }
+    return { days: days, monday: monday, sunday: addDays(monday, 6) };
+  }
+
+  function weekChart(days, goal) {
+    var W = 320, H = 180, padT = 20, padB = 24, padX = 8;
+    var maxV = 0;
+    days.forEach(function (d) { if (d.kcal > maxV) maxV = d.kcal; });
+    if (goal && goal > maxV) maxV = goal;
+    if (maxV < 500) maxV = 1000;
+    maxV *= 1.12;
+    var plotH = H - padT - padB;
+    var bw = (W - 2 * padX) / 7;
+    var barW = bw * 0.62;
+
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H }, "chart");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Calories eaten each day of the week");
+    svg.appendChild(svgEl("line", { x1: padX, x2: W - padX, y1: H - padB, y2: H - padB }, "grid"));
+
+    days.forEach(function (d, i) {
+      var x = padX + i * bw + (bw - barW) / 2;
+      var h = d.kcal / maxV * plotH;
+      if (d.kcal > 0) {
+        var over = goal && d.kcal > goal;
+        svg.appendChild(svgEl("rect", { x: x.toFixed(1), y: (H - padB - h).toFixed(1), width: barW.toFixed(1), height: Math.max(h, 1).toFixed(1), rx: 4 }, over ? "bar-over" : "bar"));
+        var v = svgEl("text", { x: (x + barW / 2).toFixed(1), y: (H - padB - h - 4).toFixed(1), "text-anchor": "middle" }, "val");
+        v.textContent = fmt(d.kcal);
+        svg.appendChild(v);
+      }
+      var lab = svgEl("text", { x: (padX + i * bw + bw / 2).toFixed(1), y: H - 8, "text-anchor": "middle" }, d.today ? "today-label" : "");
+      lab.textContent = d.label;
+      svg.appendChild(lab);
+    });
+
+    if (goal) {
+      var gy = H - padB - goal / maxV * plotH;
+      svg.appendChild(svgEl("line", { x1: padX, x2: W - padX, y1: gy.toFixed(1), y2: gy.toFixed(1) }, "goal"));
+    }
+    return svg;
+  }
+
+  function renderWeek() {
+    var root = $("view-week");
+    root.textContent = "";
+    var c = calc();
+    var wd = weekData(weekOffset);
+    var days = wd.days;
+
+    var head = el("header");
+    head.appendChild(el("h1", "", "Week"));
+    head.appendChild(el("p", "", "How your week is going"));
+    root.appendChild(head);
+
+    // Week navigation
+    var nav = el("div", "weeknav");
+    var prev = el("button", "", "‹");
+    prev.type = "button";
+    prev.setAttribute("aria-label", "Previous week");
+    prev.addEventListener("click", function () { weekOffset--; renderWeek(); });
+    var next = el("button", "", "›");
+    next.type = "button";
+    next.setAttribute("aria-label", "Next week");
+    next.disabled = weekOffset >= 0;
+    next.addEventListener("click", function () { if (weekOffset < 0) { weekOffset++; renderWeek(); } });
+    var mid = el("div", "", shortDate(wd.monday) + " – " + shortDate(wd.sunday));
+    mid.appendChild(el("small", "", weekOffset === 0 ? "This week" : (weekOffset === -1 ? "Last week" : Math.abs(weekOffset) + " weeks ago")));
+    nav.appendChild(prev); nav.appendChild(mid); nav.appendChild(next);
+    root.appendChild(nav);
+
+    // Chart
+    var chartCard = el("div", "card");
+    chartCard.appendChild(el("h3", "", "Calories per day"));
+    chartCard.appendChild(weekChart(days, c ? c.goal : null));
+    if (c) {
+      chartCard.appendChild(el("p", "muted small", "Dashed line = your daily goal (" + fmt(c.goal) + " kcal). Green bars are within your goal, orange bars are over it."));
+    } else {
+      chartCard.appendChild(el("p", "muted small", "Set up your profile in Settings to see your daily goal as a line."));
+    }
+    root.appendChild(chartCard);
+
+    // Summary
+    var logged = days.filter(function (d) { return d.logged; });
+    var elapsed = days.filter(function (d) { return !d.future; }).length;
+    var sum = el("div", "card");
+    sum.appendChild(el("h3", "", "Week summary"));
+    if (logged.length === 0) {
+      sum.appendChild(el("p", "muted", weekOffset === 0 ? "No food logged this week yet. Add your first meal on the Today tab." : "No food was logged in this week."));
+    } else {
+      var total = logged.reduce(function (s, d) { return s + d.kcal; }, 0);
+      var avg = total / logged.length;
+      if (c) {
+        var diff = avg - c.goal;
+        sum.appendChild(el("p", "", diff <= 0
+          ? "Nice work: you are averaging " + fmt(-diff) + " kcal under your goal."
+          : "You are averaging " + fmt(diff) + " kcal over your goal."));
+      }
+      var rows = [["Days logged", logged.length + " of " + elapsed], ["Average per logged day", fmt(avg) + " kcal"]];
+      if (c) {
+        rows.push(["Eaten vs goal (logged days)", fmt(total) + " / " + fmt(c.goal * logged.length) + " kcal"]);
+        var estKg = logged.reduce(function (s, d) { return s + (c.tdee - d.kcal); }, 0) / 7700;
+        rows.push(["Estimated change from calories", signed(-toDisp(estKg), 1) + " " + unitLabel()]);
+      }
+      rows.forEach(function (r) {
+        var kv = el("div", "kv");
+        kv.appendChild(el("span", "", r[0]));
+        kv.appendChild(el("span", "", r[1]));
+        sum.appendChild(kv);
+      });
+      sum.appendChild(el("p", "muted small", "Days with nothing logged are not counted. The calorie estimate is rough: real weight also moves with water, salt and the time you weigh yourself."));
+    }
+
+    // Actual weigh-ins in this week
+    var startKey = keyOf(wd.monday), endKey = keyOf(wd.sunday);
+    var inWeek = weights.filter(function (w) { return w.date >= startKey && w.date <= endKey; });
+    var before = null;
+    weights.forEach(function (w) { if (w.date < startKey) before = w; });
+    var wkv = el("div", "kv");
+    wkv.appendChild(el("span", "", "Weight change (weigh-ins)"));
+    if (inWeek.length === 0) {
+      wkv.appendChild(el("span", "", "No weigh-in"));
+    } else {
+      var endW = inWeek[inWeek.length - 1];
+      var startW = before || inWeek[0];
+      if (startW.id === endW.id) wkv.appendChild(el("span", "", "Log one more"));
+      else wkv.appendChild(el("span", "", signed(toDisp(endW.kg - startW.kg), 1) + " " + unitLabel()));
+    }
+    sum.appendChild(wkv);
+    root.appendChild(sum);
+
+    root.appendChild(progressCard(c));
+  }
+
+  // ======================================================
+  // WEIGHT
+  // ======================================================
+  function weightChart(c) {
+    var W = 320, H = 200, padL = 40, padR = 12, padT = 14, padB = 26;
+    var pts = weights.map(function (w) { return { t: parseKey(w.date).getTime(), v: toDisp(w.kg), d: w.date }; });
+    var tv = profile.targetKg ? toDisp(profile.targetKg) : null;
+    var vals = pts.map(function (p) { return p.v; });
+    if (tv !== null) vals.push(tv);
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    var span = max - min;
+    if (span < 2) { var m = (max + min) / 2; min = m - 1; max = m + 1; }
+    else { min -= span * 0.1; max += span * 0.1; }
+    var t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+    if (t1 === t0) t1 = t0 + 86400000;
+    function x(t) { return padL + (t - t0) / (t1 - t0) * (W - padL - padR); }
+    function y(v) { return padT + (max - v) / (max - min) * (H - padT - padB); }
+
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H }, "chart");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Weight trend over time");
+
+    [min, (min + max) / 2, max].forEach(function (v) {
+      var gy = y(v);
+      svg.appendChild(svgEl("line", { x1: padL, x2: W - padR, y1: gy.toFixed(1), y2: gy.toFixed(1) }, "grid"));
+      var tx = svgEl("text", { x: padL - 5, y: (gy + 3).toFixed(1), "text-anchor": "end" });
+      tx.textContent = v.toFixed(profile.units === "lb" ? 0 : 1);
+      svg.appendChild(tx);
+    });
+
+    if (tv !== null) {
+      var ty = y(tv);
+      svg.appendChild(svgEl("line", { x1: padL, x2: W - padR, y1: ty.toFixed(1), y2: ty.toFixed(1) }, "tgt"));
+      var tl = svgEl("text", { x: W - padR, y: (ty - 4).toFixed(1), "text-anchor": "end" });
+      tl.textContent = "Target " + tv.toFixed(1);
+      svg.appendChild(tl);
+    }
+
+    svg.appendChild(svgEl("polyline", {
+      points: pts.map(function (p) { return x(p.t).toFixed(1) + "," + y(p.v).toFixed(1); }).join(" ")
+    }, "wline"));
+    pts.forEach(function (p) {
+      svg.appendChild(svgEl("circle", { cx: x(p.t).toFixed(1), cy: y(p.v).toFixed(1), r: 3.2 }, "dot"));
+    });
+
+    var l1 = svgEl("text", { x: padL, y: H - 6, "text-anchor": "start" });
+    l1.textContent = shortDate(parseKey(pts[0].d));
+    var l2 = svgEl("text", { x: W - padR, y: H - 6, "text-anchor": "end" });
+    l2.textContent = shortDate(parseKey(pts[pts.length - 1].d));
+    svg.appendChild(l1); svg.appendChild(l2);
+    return svg;
+  }
+
+  function renderWeight() {
+    var root = $("view-weight");
+    root.textContent = "";
+    var c = calc();
+
+    var head = el("header");
+    head.appendChild(el("h1", "", "Weight"));
+    head.appendChild(el("p", "", "Your trend toward your target"));
+    root.appendChild(head);
+
+    root.appendChild(progressCard(c));
+
+    var chartCard = el("div", "card");
+    chartCard.appendChild(el("h3", "", "Trend (" + unitLabel() + ")"));
+    if (weights.length >= 2) {
+      chartCard.appendChild(weightChart(c));
+      chartCard.appendChild(el("p", "muted small", "Dashed line = your target weight."));
+    } else {
+      chartCard.appendChild(el("p", "muted", weights.length === 0
+        ? "Log your first weight to start your chart."
+        : "Log at least one more weight to see your trend. Weighing once a week, same day and time, works well."));
+    }
+    var add = el("button", "btn", "＋ Log weight");
+    add.type = "button";
+    add.addEventListener("click", openWeightSheet);
+    chartCard.appendChild(add);
+    root.appendChild(chartCard);
+
+    if (weights.length) {
+      var list = el("div", "card");
+      list.appendChild(el("h3", "", "History"));
+      weights.slice().reverse().forEach(function (w) {
+        var row = el("div", "wrow");
+        row.appendChild(el("div", "d", parseKey(w.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })));
+        row.appendChild(el("div", "v", fmtW(w.kg)));
+        var del = el("button", "del", "✕");
+        del.type = "button";
+        del.setAttribute("aria-label", "Delete weight from " + w.date);
+        del.addEventListener("click", function () {
+          if (confirm("Delete the weight from " + longDate(parseKey(w.date)) + "?")) {
+            weights = weights.filter(function (x) { return x.id !== w.id; });
+            save(KEYS.weights, weights);
+            renderAll();
+          }
+        });
+        row.appendChild(del);
+        list.appendChild(row);
+      });
+      root.appendChild(list);
+    }
+  }
+
+  // ---- Log weight sheet ----
+  var wOverlay = $("wOverlay");
+  function openWeightSheet() {
+    $("wValueLabel").textContent = "Weight (" + unitLabel() + ")";
+    var lw = latestWeight();
+    $("wValue").value = lw ? toDisp(lw.kg).toFixed(1) : "";
+    $("wDate").value = todayKey();
+    $("wDate").max = todayKey();
+    wOverlay.classList.add("open");
+    setTimeout(function () { $("wValue").focus(); $("wValue").select(); }, 50);
+  }
+  function closeWeightSheet() { wOverlay.classList.remove("open"); }
+  $("wCancel").addEventListener("click", closeWeightSheet);
+  wOverlay.addEventListener("click", function (e) { if (e.target === wOverlay) closeWeightSheet(); });
+  $("wForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var v = num($("wValue").value);
+    var kg = fromDisp(v);
+    var date = $("wDate").value || todayKey();
+    if (isNaN(v) || kg < 30 || kg > 300) { toast("Please enter a weight between 30 and 300 kg.", true); return; }
+    if (date > todayKey()) { toast("The date can't be in the future.", true); return; }
+    upsertWeight(date, kg);
+    closeWeightSheet();
+    toast("Weight saved");
+    renderAll();
+  });
+
+  // ======================================================
+  // SETTINGS
+  // ======================================================
+  function paceLabel(p) {
+    var kg = p;
+    var txt = profile.units === "lb"
+      ? (p === 0.25 ? "0.5 lb" : p === 0.5 ? "1 lb" : "1.5 lb")
+      : (kg + " kg");
+    var name = p === 0.25 ? "Gentle" : p === 0.5 ? "Moderate (recommended)" : "Faster";
+    return name + ": about " + txt + " per week";
+  }
+
+  function field(labelText, inputEl, hint) {
+    var f = el("div", "field");
+    var l = el("label", "", labelText);
+    if (inputEl.id) l.setAttribute("for", inputEl.id);
+    f.appendChild(l);
+    f.appendChild(inputEl);
+    if (hint) f.appendChild(el("div", "hint", hint));
+    return f;
+  }
+  function input(id, type, mode, value, placeholder) {
+    var i = el("input");
+    i.id = id; i.type = type;
+    if (mode) i.setAttribute("inputmode", mode);
+    i.value = (value === null || value === undefined) ? "" : value;
+    if (placeholder) i.placeholder = placeholder;
+    i.autocomplete = "off";
+    return i;
+  }
+  function select(id, options, value) {
+    var s = el("select"); s.id = id;
+    options.forEach(function (o) {
+      var op = el("option", "", o[1]);
+      op.value = String(o[0]);
+      if (String(o[0]) === String(value)) op.selected = true;
+      s.appendChild(op);
+    });
+    return s;
+  }
+
+  function renderSettings() {
+    var root = $("view-settings");
+    root.textContent = "";
+    var ready = profileReady();
+
+    var head = el("header");
+    head.appendChild(el("h1", "", "Settings"));
+    head.appendChild(el("p", "", ready ? "Your profile and calorie plan" : "Fill this in once to get your daily calorie goal"));
+    root.appendChild(head);
+
+    // Units
+    var uCard = el("div", "card");
+    uCard.appendChild(el("h3", "", "Weight units"));
+    var seg = el("div", "seg");
+    ["kg", "lb"].forEach(function (u) {
+      var b = el("button", profile.units === u ? "on" : "", u);
+      b.type = "button";
+      b.addEventListener("click", function () {
+        if (profile.units === u) return;
+        profile.units = u; saveProfile(); renderSettings(); renderAll();
+      });
+      seg.appendChild(b);
+    });
+    uCard.appendChild(seg);
+    uCard.appendChild(el("p", "hint", "Choose units first, then fill in the form below. Height is always in centimetres."));
+    root.appendChild(uCard);
+
+    // Profile form
+    var form = el("form", "card");
+    form.autocomplete = "off";
+    form.appendChild(el("h3", "", "About you"));
+
+    var sexDraft = profile.sex;
+    var sexSeg = el("div", "seg");
+    [["f", "Female"], ["m", "Male"]].forEach(function (s) {
+      var b = el("button", sexDraft === s[0] ? "on" : "", s[1]);
+      b.type = "button";
+      b.addEventListener("click", function () {
+        sexDraft = s[0];
+        var kids = sexSeg.children;
+        for (var i = 0; i < kids.length; i++) kids[i].className = "";
+        b.className = "on";
+      });
+      sexSeg.appendChild(b);
+    });
+    var sexField = el("div", "field");
+    sexField.appendChild(el("label", "", "Sex (used only in the calorie formula)"));
+    sexField.appendChild(sexSeg);
+    form.appendChild(sexField);
+
+    var lw = latestWeight();
+    var dig = 1;
+    var sAge = input("sAge", "text", "numeric", profile.age, "e.g. 35");
+    var sHeight = input("sHeight", "text", "decimal", profile.heightCm, "e.g. 175");
+    var sWeight = input("sWeight", "text", "decimal", lw ? toDisp(lw.kg).toFixed(dig) : "", "e.g. " + (profile.units === "lb" ? "180" : "82"));
+    var sTarget = input("sTarget", "text", "decimal", profile.targetKg ? toDisp(profile.targetKg).toFixed(dig) : "", "e.g. " + (profile.units === "lb" ? "160" : "72"));
+    form.appendChild(field("Age (years)", sAge));
+    form.appendChild(field("Height (cm)", sHeight));
+    form.appendChild(field("Current weight (" + unitLabel() + ")", sWeight, "Saving a changed weight also adds it to your weight log for today."));
+    form.appendChild(field("Target weight (" + unitLabel() + ")", sTarget));
+
+    form.appendChild(el("h3", "", "Your plan"));
+    form.lastChild.style.marginTop = "18px";
+    var sActivity = select("sActivity", [
+      [1.2, "Sedentary: desk job, little exercise"],
+      [1.375, "Light: exercise 1–3 days a week"],
+      [1.55, "Moderate: exercise 3–5 days a week"],
+      [1.725, "Very active: hard exercise 6–7 days a week"]
+    ], profile.activity);
+    var sPace = select("sPace", [[0.25, paceLabel(0.25)], [0.5, paceLabel(0.5)], [0.75, paceLabel(0.75)]], profile.pace);
+    var sCustom = input("sCustom", "text", "numeric", profile.customGoal, "Leave empty to use the recommended goal");
+    form.appendChild(field("Activity level", sActivity, "If unsure, pick the lower one. Most people overestimate."));
+    form.appendChild(field("How fast do you want to lose weight?", sPace, "A slow, steady pace is easier to keep up."));
+    form.appendChild(field("Your own daily goal (optional, kcal)", sCustom));
+
+    var saveBtn = el("button", "btn", ready ? "Save changes" : "Calculate my calorie goal");
+    saveBtn.type = "submit";
+    form.appendChild(saveBtn);
+
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var age = parseInt(sAge.value, 10);
+      var hcm = num(sHeight.value);
+      var wkg = fromDisp(num(sWeight.value));
+      var tkg = fromDisp(num(sTarget.value));
+      var customTxt = sCustom.value.trim();
+      var custom = customTxt === "" ? null : parseInt(customTxt, 10);
+
+      if (!sexDraft) { toast("Please choose female or male.", true); return; }
+      if (!(age >= 10 && age <= 100)) { toast("Please enter your age (10 to 100).", true); return; }
+      if (!(hcm >= 100 && hcm <= 250)) { toast("Please enter your height in cm (100 to 250).", true); return; }
+      if (!(wkg >= 30 && wkg <= 300)) { toast("Please enter a current weight between 30 and 300 kg.", true); return; }
+      if (!(tkg >= 30 && tkg <= 300)) { toast("Please enter a target weight between 30 and 300 kg.", true); return; }
+      if (custom !== null && !(custom >= 500 && custom <= 6000)) { toast("Your own goal should be between 500 and 6,000 kcal, or leave it empty.", true); return; }
+
+      var firstTime = !profileReady();
+      profile.sex = sexDraft;
+      profile.age = age;
+      profile.heightCm = Math.round(hcm * 10) / 10;
+      profile.targetKg = tkg;
+      profile.activity = parseFloat(sActivity.value);
+      profile.pace = parseFloat(sPace.value);
+      profile.customGoal = custom;
+      saveProfile();
+
+      var cur = latestWeight();
+      if (!cur || Math.abs(cur.kg - wkg) > 0.05) upsertWeight(todayKey(), wkg);
+
+      toast("Saved");
+      if (firstTime) switchTo("today");
+      else { renderSettings(); renderAll(); }
+    });
+    root.appendChild(form);
+
+    // Numbers
+    var c = calc();
+    if (c) {
+      var nCard = el("div", "card");
+      nCard.appendChild(el("h3", "", "Your numbers"));
+      var rows = [
+        ["BMI now", c.bmi.toFixed(1) + " (" + bmiLabel(c.bmi) + ")"],
+        ["Healthy weight for your height", fmtW(c.healthyMin) + " – " + fmtW(c.healthyMax)],
+        ["Target BMI", c.targetBmi.toFixed(1)],
+        ["Resting calories (BMR)", fmt(c.bmr) + " kcal"],
+        ["Maintenance calories", fmt(c.tdee) + " kcal"],
+        ["Recommended daily goal", fmt(c.rec) + " kcal"],
+        ["Goal in use", fmt(c.goal) + " kcal" + (c.custom ? " (yours)" : "")],
+        ["Expected change", (c.weeklyKg > 0.02 ? "−" : (c.weeklyKg < -0.02 ? "+" : "")) + fmtW(Math.abs(c.weeklyKg), 2) + " per week"]
+      ];
+      rows.forEach(function (r) {
+        var kv = el("div", "kv");
+        kv.appendChild(el("span", "", r[0]));
+        kv.appendChild(el("span", "", r[1]));
+        nCard.appendChild(kv);
+      });
+      c.notes.forEach(function (n) { nCard.appendChild(el("div", "note", "⚠️ " + n)); });
+      nCard.appendChild(el("p", "muted small",
+        "How it works: your resting calories come from the Mifflin-St Jeor formula (weight, height, age, sex). Multiplying by your activity level gives the calories that keep your weight steady. " +
+        "To lose weight, a daily deficit is subtracted (about 7,700 kcal per kg of body weight), never more than 25% of maintenance and never below " + fmt(c.floor) + " kcal. " +
+        "The goal updates as your weight changes. BMI is only a rough guide. BiteLog is a tracking tool, not medical advice."));
+      root.appendChild(nCard);
+    }
+
+    // Backup and storage
+    var st = dataStats();
+    var bCard = el("div", "card");
+    bCard.id = "dataCard";
+    bCard.appendChild(el("h3", "", "Save your progress"));
+    bCard.appendChild(el("p", "muted small", "Your data lives only on this phone. Save a backup file now and then (choose \"Save to Files\" and pick iCloud Drive) so you never lose your progress."));
+    var lastTxt = profile.lastBackup ? longDate(new Date(profile.lastBackup)) : "Never";
+    [["Last backup", lastTxt, "lastBackupVal"],
+     ["Food entries", fmt(st.entries)],
+     ["Weight entries", fmt(st.weights)],
+     ["Space used", st.kb < 10 ? st.kb.toFixed(1) + " KB" : fmt(st.kb) + " KB"]].forEach(function (r) {
+      var kv = el("div", "kv");
+      kv.appendChild(el("span", "", r[0]));
+      var val = el("span", "", r[1]);
+      if (r[2]) val.id = r[2];
+      kv.appendChild(val);
+      bCard.appendChild(kv);
+    });
+    bCard.appendChild(el("p", "muted small", "For comparison, one photo is about 3,000 KB. A year of logging is usually smaller than that."));
+    var saveB = el("button", "btn", "Save backup file");
+    saveB.type = "button";
+    saveB.addEventListener("click", exportBackup);
+    bCard.appendChild(saveB);
+    var fileIn = el("input");
+    fileIn.type = "file";
+    fileIn.id = "restoreFile";
+    fileIn.accept = ".json,application/json";
+    fileIn.style.display = "none";
+    fileIn.addEventListener("change", function () { importBackup(fileIn); });
+    var restoreB = el("button", "btn secondary", "Restore from backup file");
+    restoreB.type = "button";
+    restoreB.addEventListener("click", function () { fileIn.click(); });
+    bCard.appendChild(restoreB);
+    bCard.appendChild(fileIn);
+    root.appendChild(bCard);
+
+    // Free up space / delete
+    var fCard = el("div", "card");
+    fCard.appendChild(el("h3", "", "Clear saved data"));
+    fCard.appendChild(el("p", "muted small", "Deleting cannot be undone, so save a backup first. Your weights, profile and calorie goal are kept unless you delete everything."));
+    var sOld = select("sOld", [[30, "30 days"], [90, "3 months"], [180, "6 months"], [365, "1 year"]], 90);
+    fCard.appendChild(field("Delete food entries older than", sOld));
+    var delOld = el("button", "btn secondary", "Delete older food entries");
+    delOld.type = "button";
+    delOld.addEventListener("click", function () { deleteOlder(parseInt(sOld.value, 10)); });
+    fCard.appendChild(delOld);
+    var delFood = el("button", "btn secondary", "Delete all food entries");
+    delFood.type = "button";
+    delFood.addEventListener("click", deleteAllFood);
+    fCard.appendChild(delFood);
+    var reset = el("button", "btn danger", "Delete everything");
+    reset.type = "button";
+    reset.addEventListener("click", function () {
+      if (!confirm("Delete ALL food entries, weights and your profile? This cannot be undone.")) return;
+      if (!confirm("Really delete everything?")) return;
+      try {
+        localStorage.removeItem(KEYS.entries);
+        localStorage.removeItem(KEYS.profile);
+        localStorage.removeItem(KEYS.weights);
+      } catch (e) {}
+      entries = []; weights = [];
+      profile = defaultProfile();
+      weekOffset = 0;
+      toast("All data deleted");
+      switchTo("settings");
+    });
+    fCard.appendChild(reset);
+    root.appendChild(fCard);
+  }
+
+  // ======================================================
+  // Backup, restore and clearing data
+  // ======================================================
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function dataStats() {
+    var bytes = JSON.stringify(entries).length + JSON.stringify(weights).length + JSON.stringify(profile).length;
+    return { entries: entries.length, weights: weights.length, kb: bytes / 1024 };
+  }
+
+  function needsBackup() {
+    if (entries.length + weights.length < 5) return false;
+    if (!profile.lastBackup) return true;
+    var t = Date.parse(profile.lastBackup);
+    if (isNaN(t)) return true;
+    return (Date.now() - t) / 86400000 >= 14;
+  }
+
+  function buildBackup() {
+    return {
+      app: "bitelog", version: 1, exportedAt: new Date().toISOString(),
+      profile: profile, entries: entries, weights: weights
+    };
+  }
+
+  function markBackup() {
+    profile.lastBackup = new Date().toISOString();
+    saveProfile();
+    var lb = $("lastBackupVal");
+    if (lb) lb.textContent = longDate(new Date(profile.lastBackup));
+    renderToday();
+  }
+
+  function downloadText(name, text) {
+    var blob = new Blob([text], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function exportBackup() {
+    var json = JSON.stringify(buildBackup());
+    var name = "bitelog-backup-" + todayKey() + ".json";
+    var file = null;
+    try { file = new File([json], name, { type: "application/json" }); } catch (e) { file = null; }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: "BiteLog backup" }).then(function () {
+        markBackup();
+        toast("Backup shared. Make sure you chose Save to Files.");
+      }).catch(function (e) {
+        if (e && e.name === "AbortError") return;      // user closed the share sheet
+        downloadText(name, json);
+        markBackup();
+        toast("Backup downloaded. Look in your Files app.");
+      });
+    } else {
+      downloadText(name, json);
+      markBackup();
+      toast("Backup downloaded. Look in your Files app.");
+    }
+  }
+
+  // Checks a backup file and keeps only valid data
+  function cleanBackup(obj) {
+    if (!obj || typeof obj !== "object" || obj.app !== "bitelog") return null;
+    var okDate = /^\d{4}-\d{2}-\d{2}$/;
+    var mealIds = MEALS.map(function (m) { return m.id; });
+    function optNum(v) { return (typeof v === "number" && isFinite(v) && v >= 0) ? v : null; }
+    function inRange(v, lo, hi) { return (typeof v === "number" && isFinite(v) && v >= lo && v <= hi) ? v : null; }
+    function uniqueId(raw, seen) {
+      var id = (typeof raw === "string" && raw) ? raw.slice(0, 40) : newId();
+      while (seen[id]) id = newId();
+      seen[id] = true;
+      return id;
+    }
+
+    var seenE = {};
+    var es = (Array.isArray(obj.entries) ? obj.entries : []).filter(function (e) {
+      return e && typeof e.name === "string" && typeof e.date === "string" && okDate.test(e.date) &&
+        mealIds.indexOf(e.meal) !== -1 && typeof e.calories === "number" && isFinite(e.calories) &&
+        e.calories >= 0 && e.calories <= 20000;
+    }).map(function (e) {
+      return {
+        id: uniqueId(e.id, seenE), date: e.date, meal: e.meal,
+        name: e.name.slice(0, 200),
+        portion: typeof e.portion === "string" ? e.portion.slice(0, 100) : "",
+        calories: Math.round(e.calories),
+        protein: optNum(e.protein), carbs: optNum(e.carbs), fat: optNum(e.fat)
+      };
+    });
+
+    var seenW = {}, seenDay = {};
+    var ws = (Array.isArray(obj.weights) ? obj.weights : []).filter(function (w) {
+      return w && typeof w.date === "string" && okDate.test(w.date) &&
+        typeof w.kg === "number" && isFinite(w.kg) && w.kg >= 30 && w.kg <= 300;
+    }).filter(function (w) {
+      if (seenDay[w.date]) return false;
+      seenDay[w.date] = true;
+      return true;
+    }).map(function (w) { return { id: uniqueId(w.id, seenW), date: w.date, kg: w.kg }; });
+
+    var p = (obj.profile && typeof obj.profile === "object") ? obj.profile : {};
+    var prof = {
+      sex: (p.sex === "f" || p.sex === "m") ? p.sex : null,
+      age: inRange(p.age, 10, 100),
+      heightCm: inRange(p.heightCm, 100, 250),
+      targetKg: inRange(p.targetKg, 30, 300),
+      activity: [1.2, 1.375, 1.55, 1.725].indexOf(p.activity) !== -1 ? p.activity : 1.2,
+      pace: [0.25, 0.5, 0.75].indexOf(p.pace) !== -1 ? p.pace : 0.5,
+      customGoal: inRange(p.customGoal, 500, 6000),
+      units: p.units === "lb" ? "lb" : "kg",
+      lastBackup: (typeof obj.exportedAt === "string" && !isNaN(Date.parse(obj.exportedAt))) ? new Date(obj.exportedAt).toISOString() : null
+    };
+    return { entries: es, weights: ws, profile: prof };
+  }
+
+  function importBackup(inputEl) {
+    var f = inputEl.files && inputEl.files[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { inputEl.value = ""; toast("That file is too big to be a BiteLog backup.", true); return; }
+    var r = new FileReader();
+    r.onerror = function () { inputEl.value = ""; toast("Could not read that file.", true); };
+    r.onload = function () {
+      inputEl.value = "";
+      var obj = null;
+      try { obj = JSON.parse(String(r.result)); } catch (e) { obj = null; }
+      var c = cleanBackup(obj);
+      if (!c) { toast("That does not look like a BiteLog backup file.", true); return; }
+      var msg = "Restore this backup?\n\n" + c.entries.length + " food entries and " + c.weights.length + " weights" +
+        (c.profile.lastBackup ? ", saved on " + longDate(new Date(c.profile.lastBackup)) : "") +
+        ".\n\nThis REPLACES everything currently on this phone.";
+      if (!confirm(msg)) return;
+      entries = c.entries;
+      weights = c.weights;
+      sortWeights();
+      profile = Object.assign(defaultProfile(), c.profile);
+      save(KEYS.entries, entries);
+      save(KEYS.weights, weights);
+      saveProfile();
+      weekOffset = 0;
+      toast("Backup restored");
+      switchTo(profileReady() ? "today" : "settings");
+    };
+    r.readAsText(f);
+  }
+
+  function deleteOlder(days) {
+    var cutoff = keyOf(addDays(new Date(), -days));
+    var old = entries.filter(function (e) { return e.date < cutoff; });
+    if (old.length === 0) { toast("No food entries older than that."); return; }
+    if (!confirm("Delete " + fmt(old.length) + " food entries from before " + longDate(parseKey(cutoff)) +
+      "?\n\nYour weights and profile are kept. Tip: save a backup first. This cannot be undone.")) return;
+    entries = entries.filter(function (e) { return e.date >= cutoff; });
+    save(KEYS.entries, entries);
+    toast("Deleted " + fmt(old.length) + " entries");
+    renderSettings();
+    renderAll();
+  }
+
+  function deleteAllFood() {
+    if (entries.length === 0) { toast("There are no food entries to delete."); return; }
+    if (!confirm("Delete all " + fmt(entries.length) + " food entries?\n\nYour weights and profile are kept. Tip: save a backup first. This cannot be undone.")) return;
+    entries = [];
+    save(KEYS.entries, entries);
+    toast("Food entries deleted");
+    renderSettings();
+    renderAll();
+  }
+
+  // ======================================================
+  // Add-food sheet
+  // ======================================================
+  var overlay = $("overlay");
+  var form = $("form");
+  var fName = $("fName"), fPortion = $("fPortion"), fCal = $("fCal");
+  var fProtein = $("fProtein"), fCarbs = $("fCarbs"), fFat = $("fFat");
+  var saveBtn = $("saveBtn");
   var currentMeal = null;
 
   function validate() {
@@ -267,22 +1402,21 @@
 
   function openSheet(meal) {
     currentMeal = meal;
-    document.getElementById("sheetTitle").textContent = "Add to " + meal.label;
+    $("sheetTitle").textContent = "Add to " + meal.label;
     form.reset();
     validate();
     overlay.classList.add("open");
     setTimeout(function () { fName.focus(); }, 50);
   }
   function closeSheet() { overlay.classList.remove("open"); }
-
-  document.getElementById("cancelBtn").addEventListener("click", closeSheet);
+  $("cancelBtn").addEventListener("click", closeSheet);
   overlay.addEventListener("click", function (e) { if (e.target === overlay) closeSheet(); });
 
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
     if (saveBtn.disabled) return;
     entries.push({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      id: newId(),
       date: todayKey(),
       meal: currentMeal.id,
       name: fName.value.trim(),
@@ -292,19 +1426,30 @@
       carbs: numOrNull(fCarbs.value),
       fat: numOrNull(fFat.value)
     });
-    saveEntries(entries);
+    save(KEYS.entries, entries);
     closeSheet();
-    render();
+    renderAll();
   });
 
-  // Refresh when the app comes back to the foreground (e.g. after midnight)
+  // Refresh when the app returns to the foreground (e.g. after midnight)
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) render();
+    if (!document.hidden) renderAll();
   });
 
-  render();
+  // ======================================================
+  // Start
+  // ======================================================
+  renderAll();
+  switchTo(profileReady() ? "today" : "settings");
 
-  // ---------- offline support ----------
+  // Ask the browser to keep this app's data safe from automatic clean-up
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      var pp = navigator.storage.persist();
+      if (pp && pp.catch) pp.catch(function () {});
+    }
+  } catch (e) {}
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js").catch(function () {});

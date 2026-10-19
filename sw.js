@@ -1,6 +1,6 @@
 // BiteLog service worker: makes the app work offline.
 // Bump CACHE when you change files so phones pick up the new version.
-var CACHE = "bitelog-v1";
+var CACHE = "bitelog-v2";
 var FILES = [
   "./",
   "index.html",
