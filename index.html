@@ -345,6 +345,36 @@
   </form>
 </div>
 
+<!-- Add drink sheet -->
+<div class="overlay" id="dOverlay">
+  <form class="sheet" id="dForm" autocomplete="off">
+    <h2>Add a drink</h2>
+    <div class="field">
+      <label for="dType">Drink</label>
+      <select id="dType"></select>
+    </div>
+    <div class="field">
+      <label for="dAmt">Amount (ml)</label>
+      <input id="dAmt" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="e.g. 200">
+      <div class="hint" id="dAmtHint"></div>
+    </div>
+    <div class="field">
+      <label for="dKcal">Calories (kcal)</label>
+      <input id="dKcal" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0">
+      <div class="hint">A rough estimate. Change it to match your milk or product. Leave 0 for black coffee, tea and water.</div>
+    </div>
+    <div class="field" id="dMealWrap" hidden>
+      <label for="dMeal">Also log the calories in</label>
+      <select id="dMeal"></select>
+    </div>
+    <p class="muted small">Coffee and tea count toward your water in normal amounts (a few cups a day).</p>
+    <div class="buttons">
+      <button type="button" class="btn-cancel" id="dCancel">Cancel</button>
+      <button type="submit" class="btn-save" id="dSave" disabled>Add</button>
+    </div>
+  </form>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -709,6 +739,12 @@
     big.addEventListener("click", function () { addWater(500); });
     row.appendChild(minus); row.appendChild(plus); row.appendChild(big);
     card.appendChild(row);
+    var row2 = el("div", "btn-row");
+    var drink = el("button", "", "\u2615 Add coffee, tea or another drink");
+    drink.type = "button";
+    drink.addEventListener("click", openDrinkSheet);
+    row2.appendChild(drink);
+    card.appendChild(row2);
     return card;
   }
 
@@ -2183,6 +2219,88 @@
     note.appendChild(openOwnApp());
     root.appendChild(note);
   }
+
+  // ======================================================
+  // Drinks (coffee, tea, juice...) that count toward water
+  // ======================================================
+  var DRINKS = [
+    { id: "water",   label: "💧 Water",                         ml: 250, kcal: 0,   name: "Water" },
+    { id: "coffee",  label: "☕ Coffee, black",                       ml: 200, kcal: 0,   name: "Black coffee" },
+    { id: "coconut", label: "☕ Coffee with a little coconut milk",   ml: 200, kcal: 25,  name: "Coffee with coconut milk" },
+    { id: "milkcof", label: "☕ Coffee with a little milk",           ml: 200, kcal: 20,  name: "Coffee with milk" },
+    { id: "tea",     label: "🍵 Tea",                           ml: 250, kcal: 0,   name: "Tea" },
+    { id: "juice",   label: "🧃 Juice",                         ml: 250, kcal: 110, name: "Juice" },
+    { id: "milk",    label: "🥛 Milk",                          ml: 250, kcal: 120, name: "Milk" },
+    { id: "other",   label: "🥤 Other drink",                   ml: 250, kcal: 0,   name: "Drink" }
+  ];
+  var dOverlay = $("dOverlay");
+  var dType = $("dType"), dAmt = $("dAmt"), dKcal = $("dKcal"), dMeal = $("dMeal"), dSave = $("dSave");
+  var dAmtTouched = false, dKcalTouched = false;
+  DRINKS.forEach(function (x) {
+    var o = document.createElement("option");
+    o.value = x.id; o.textContent = x.label;
+    dType.appendChild(o);
+  });
+  MEALS.forEach(function (m) {
+    var o = document.createElement("option");
+    o.value = m.id; o.textContent = m.icon + " " + m.label;
+    if (m.id === "snacks") o.selected = true;
+    dMeal.appendChild(o);
+  });
+  function drinkById(id) {
+    for (var i = 0; i < DRINKS.length; i++) if (DRINKS[i].id === id) return DRINKS[i];
+    return DRINKS[DRINKS.length - 1];
+  }
+  function dNum(input) { return /^\d+$/.test(input.value.trim()) ? parseInt(input.value.trim(), 10) : NaN; }
+  function dRefresh() {
+    var a = dNum(dAmt);
+    var kText = dKcal.value.trim();
+    var k = kText === "" ? 0 : dNum(dKcal);
+    dSave.disabled = !(a >= 1 && a <= 2000 && k >= 0 && k <= 2000);
+    $("dMealWrap").hidden = !(k > 0);
+    $("dAmtHint").textContent = a >= 1 ? "= " + (Math.round(a / profile.glassMl * 10) / 10) + " glasses (" + profile.glassMl + " ml each)" : "";
+  }
+  function dPrefill() {
+    var x = drinkById(dType.value);
+    if (!dAmtTouched) dAmt.value = String(x.ml);
+    if (!dKcalTouched) dKcal.value = String(x.kcal);
+    dRefresh();
+  }
+  dType.addEventListener("change", dPrefill);
+  dAmt.addEventListener("input", function () { dAmtTouched = true; dRefresh(); });
+  dKcal.addEventListener("input", function () { dKcalTouched = true; dRefresh(); });
+
+  function openDrinkSheet() {
+    dAmtTouched = false; dKcalTouched = false;
+    dType.value = "coffee";
+    dMeal.value = "snacks";
+    dPrefill();
+    dOverlay.classList.add("open");
+    setTimeout(function () { dAmt.focus(); dAmt.select(); }, 50);
+  }
+  function closeDrinkSheet() { dOverlay.classList.remove("open"); }
+  $("dCancel").addEventListener("click", closeDrinkSheet);
+  dOverlay.addEventListener("click", function (e) { if (e.target === dOverlay) closeDrinkSheet(); });
+  $("dForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (dSave.disabled) return;
+    var x = drinkById(dType.value);
+    var ml = dNum(dAmt);
+    var kcal = dKcal.value.trim() === "" ? 0 : dNum(dKcal);
+    var mealLabel = "";
+    if (kcal > 0) {
+      var meal = MEALS.filter(function (m) { return m.id === dMeal.value; })[0] || MEALS[3];
+      entries.push({
+        id: newId(), date: todayKey(), meal: meal.id, name: x.name, portion: ml + " ml",
+        calories: kcal, protein: null, carbs: null, fat: null, sugar: null
+      });
+      save(KEYS.entries, entries);
+      mealLabel = meal.label;
+    }
+    closeDrinkSheet();
+    addWater(ml);
+    toast("Added " + ml + " ml to your water" + (kcal > 0 ? " and " + kcal + " kcal to " + mealLabel : ""));
+  });
 
   // ======================================================
   // Backup, restore and clearing data
